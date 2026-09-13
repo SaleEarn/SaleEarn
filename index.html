@@ -2704,7 +2704,7 @@ function applyServicePayment(x,source){
    if((S.balancePayments||[]).some(b=>b.gatewayPaymentId===x.gatewayPaymentId&&b.status==='SUCCESS'))return false;
    S.balancePayments.unshift({id:uid("bal"),sellerId:currentSeller().id,amount:x.amount,kind:x.kind,source,status:"SUCCESS",paymentVerified:true,gatewayPaymentId:x.gatewayPaymentId||null,date:nowISO(),meta:x.meta||{}});
  }
- if(x.kind==="subscription" && (source==="BALANCE"||source==="ONLINE_TEST")){
+ if(x.kind==="subscription" && (source==="BALANCE"||source==="ONLINE_TEST"||source==="RAZORPAY_TEST")){
    S.subscriptions=S.subscriptions||[];
    const subDate=nowISO(),subEnd=new Date(new Date(subDate).getTime()+SUBSCRIPTION_DURATION_MS).toISOString();
    if(x.gatewayPaymentId && S.subscriptions.some(z=>z.gatewayPaymentId===x.gatewayPaymentId))return false;
@@ -2717,7 +2717,7 @@ function applyServicePayment(x,source){
      const refKey=x.gatewayPaymentId||usedReferral.sellerId+':'+S.currentUser?.id+':'+subDate;
      if(!S.referrals.some(r=>r.paymentKey===refKey))S.referrals.unshift({id:uid("ref"),sellerId:usedReferral.sellerId,userId:S.currentUser.id,userName:S.currentUser.name,commission,status:"ACTIVE",date:subDate,paidAmount,rate:refRate,sourceSubscription:true,paymentKey:refKey});
    }
- }else if(x.kind==="ad" && (source==="BALANCE"||source==="ONLINE_TEST")){
+ }else if(x.kind==="ad" && (source==="BALANCE"||source==="ONLINE_TEST"||source==="RAZORPAY_TEST")){
    const sid=currentSeller().id,rate=x.meta.rate||0,days=x.meta.days||1,start=new Date(),end=new Date(start.getTime()+days*86400000);
    if(x.gatewayPaymentId && S.ads.some(a=>a.gatewayPaymentId===x.gatewayPaymentId))return false;
    S.ads.unshift({id:uid("ad"),sellerId:sid,productId:x.meta.productId,type:x.meta.type,placement:x.meta.type,cost:x.amount,clicks:0,status:"ACTIVE",startDate:start.toISOString(),endDate:end.toISOString(),paymentSource:source,paymentStatus:"SUCCESS",paymentVerified:true,gatewayPaymentId:x.gatewayPaymentId||null});
@@ -5745,4 +5745,48 @@ applyAppearanceTexture();
 .product-card .product-tags{display:flex;align-items:center;gap:6px;flex-wrap:nowrap;min-width:0;width:100%;height:30px;overflow:hidden;white-space:nowrap}
 .product-card .product-tags .tag{display:inline-flex;flex:0 1 auto;min-width:0;max-width:48%;margin:0;padding:6px 9px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 </style>
+
+<script data-saleearn-paid-features-supabase="v1">
+(function(){
+  'use strict';
+  function badgeLedger(){
+    const sid=currentSeller()?.id||S.currentUser?.sellerId||'guest';
+    S.badgeLedgers=S.badgeLedgers&&typeof S.badgeLedgers==='object'?S.badgeLedgers:{};
+    return S.badgeLedgers[sid]||(S.badgeLedgers[sid]={freeLimit:3,price:3,credits:0,placedProductIds:[],purchases:[]});
+  }
+  function addBadgeCredits(quantity,amount,source,response,referenceId){
+    const st=badgeLedger(),gatewayId=response?.razorpay_payment_id||response?.gatewayPaymentId||null;
+    st.purchases=Array.isArray(st.purchases)?st.purchases:[];
+    if(gatewayId&&st.purchases.some(x=>String(x.gatewayPaymentId||'')===String(gatewayId)&&x.paymentVerified!==false))return false;
+    st.credits=Math.min(100,Number(st.credits||0)+Number(quantity||0));
+    st.purchases.unshift({id:referenceId||uid('badgepay'),sellerId:currentSeller()?.id,quantity:Number(quantity),amount:Number(amount),source:source||'RAZORPAY_TEST',paymentStatus:'SUCCESS',paymentVerified:true,gatewayPaymentId:gatewayId,razorpayOrderId:response?.razorpay_order_id||response?.razorpayOrderId||null,date:nowISO()});
+    save();
+    return true;
+  }
+  window.openBadgeCredits=function(){
+    const st=badgeLedger(),max=Math.max(0,100-Number(st.credits||0));
+    if(!max)return toast('Badge credit limit reached');
+    document.getElementById('modalRoot').innerHTML=`<div class="modal-bg"><div class="modal"><button class="btn iconbtn close" onclick="closeModal()">×</button><h2>Buy Badge Credits</h2><p class="muted">₹3 per placement · Credits sync to Supabase after verified payment.</p><div class="field"><label>Quantity</label><input id="badgeQty" type="number" min="1" max="${max}" value="10" oninput="document.getElementById('badgeTotal').textContent=money(Math.max(1,Math.min(${max},Number(this.value)||1))*3)"></div><div class="dash-card"><b>Total: <span id="badgeTotal">${money(30)}</span></b><div class="small muted">Current credits: ${st.credits} · Maximum: 100</div></div><div class="modal-footer"><button class="btn" onclick="buyBadgeCredits('BALANCE')">Pay from Balance</button><button class="btn primary" onclick="buyBadgeCredits('RAZORPAY_TEST')">Pay Online with Razorpay</button></div></div></div>`;
+  };
+  window.buyBadgeCredits=async function(source){
+    const st=badgeLedger(),sid=currentSeller()?.id;if(!sid)return;
+    const max=Math.max(0,100-Number(st.credits||0)),q=Math.min(max,Math.max(1,Math.floor(Number(document.getElementById('badgeQty')?.value)||1))),amount=q*3;
+    if(!q)return toast('Badge credit limit reached');
+    if(source==='BALANCE'){
+      if(sellerAvailableBalance(sid)<amount)return toast('Insufficient available balance');
+      S.balancePayments=S.balancePayments||[];S.balancePayments.unshift({id:uid('bal'),sellerId:sid,amount,kind:'badgeCredits',source:'BALANCE',status:'SUCCESS',paymentVerified:true,date:nowISO()});
+      addBadgeCredits(q,amount,'BALANCE',null,uid('badgepay'));closeModal();toast(q+' badge credits added');render();return;
+    }
+    if(!systemGuard('payments','Payments are temporarily disabled by Admin'))return;
+    const referenceId=uid('badgepay');
+    document.getElementById('modalRoot').innerHTML='<div class="modal-bg"><div class="modal" style="text-align:center;padding:34px"><div style="font-size:42px">💳</div><h2>Opening Razorpay</h2><p class="muted">Badge credits activate only after verification.</p></div></div>';
+    const ok=await startRazorpayCheckout({amount,description:razorpaySafeDescription('Sale Earn - Badge credits'),customerName:S.currentUser?.name||currentSeller()?.name||'',customerEmail:S.currentUser?.email||'',metadata:{kind:'badgeCredits',referenceId,sellerId:sid,quantity:q},onVerified:async(response)=>{
+      const added=addBadgeCredits(q,amount,'RAZORPAY_TEST',response,referenceId);
+      if(added){closeModal();toast(q+' badge credits verified and synced');render()}
+    }});
+    if(!ok)closeModal();
+  };
+})();
+</script>
+
 </html>
