@@ -1545,6 +1545,15 @@ async function callRazorpayFunction(functionName, body){
   return data;
 }
 
+function razorpaySafeDescription(value){
+  return String(value||"Sale Earn payment")
+    .normalize("NFKD")
+    .replace(/[^\x20-\x7E]/g," ")
+    .replace(/\s+/g," ")
+    .trim()
+    .slice(0,255) || "Sale Earn payment";
+}
+
 async function startRazorpayCheckout({amount,description,customerName,customerEmail,metadata={},onVerified}){
   if(!RAZORPAY_KEY_ID || RAZORPAY_KEY_ID.includes("REPLACE_WITH_YOUR_KEY_ID")){
     toast("Add your Razorpay Test Key ID in the HTML first.");
@@ -1584,7 +1593,7 @@ async function startRazorpayCheckout({amount,description,customerName,customerEm
       amount:payable,
       currency:"INR",
       name:"Sale Earn",
-      description:description||"Sale Earn payment",
+      description:razorpaySafeDescription(description),
       order_id:order.id,
       prefill:{
         name:customerName||"",
@@ -1867,7 +1876,13 @@ function currencyCode(){return S?.settings?.currency==="USD"?"USD":"INR"}
 function readFxCache(){try{const x=JSON.parse(localStorage.getItem(FX_CACHE_KEY)||"null");return x&&Number(x.rate)>40&&Number(x.rate)<200?x:null}catch(e){return null}}
 function usdInrRate(){return Number(readFxCache()?.rate||USD_INR_RATE)}
 function money(n){const v=Number(n||0);return currencyCode()==="USD"?"$"+(v/usdInrRate()).toFixed(2):"₹"+v.toFixed(2)}
-async function refreshCurrencyRate(force=false){const c=readFxCache();if(!force&&c&&Date.now()-Number(c.updatedAt||0)<FX_MAX_AGE)return c.rate;try{const r=await fetch("https://api.frankfurter.app/latest?from=USD&to=INR",{cache:"no-store"});if(!r.ok)throw new Error("FX HTTP "+r.status);const d=await r.json(),rate=Number(d?.rates?.INR);if(!(rate>40&&rate<200))throw new Error("Invalid FX rate");localStorage.setItem(FX_CACHE_KEY,JSON.stringify({rate,updatedAt:Date.now(),source:"Frankfurter"}));if(currencyCode()==="USD"&&typeof render==="function")render();return rate}catch(e){console.warn("Live currency rate unavailable; using cached/fallback rate",e.message||e);return usdInrRate()}}
+async function refreshCurrencyRate(force=false){
+  const c=readFxCache();
+  if(c&&Number(c.rate)>40&&Number(c.rate)<200){
+    return Number(c.rate);
+  }
+  return usdInrRate();
+}
 function setCurrency(code){const next=code==="USD"?"USD":"INR";S.settings=S.settings||{};if(S.settings.currency===next){if(next==="USD")refreshCurrencyRate();return}S.settings.currency=next;save();render();toast(next==="USD"?"USD prices enabled":"INR prices enabled");if(next==="USD")refreshCurrencyRate()}
 function currencyRateLabel(){const c=readFxCache();return `1 USD ≈ ₹${usdInrRate().toFixed(2)}${c?.updatedAt?" · updated "+new Date(c.updatedAt).toLocaleDateString("en-IN"):" · fallback rate"}`}
 const PLATFORM_FEE_RATES={FREE:.20,CE:.10,PRIME:.10,ENTERPRISE:.05};
@@ -1918,7 +1933,7 @@ const seedProducts=[
  {id:"p1001",sellerId:"seller01",sales:124,title:"1000+ Pookie Voice Reels Bundle | Viral Voice Reels Videos | Only ₹49",category:"Reel Bundle",tags:["Entertainment","Viral Reels","Voice Reels"],price:49,oldPrice:99,description:"Ready-to-post short-form reel assets for creators. Instant digital delivery and creator-friendly usage.",image:"https://images.unsplash.com/photo-1492684223066-81342ee5ff30?auto=format&fit=crop&w=900&q=80",links:["https://example.com/pookie-bundle"],faq:[["What do I receive?","A digital bundle with ready-to-use reel assets and a delivery link."],["How fast is delivery?","Delivery is shown immediately after successful payment in this demo."],["Can I use these for my content?","Check the seller's product policy before commercial use."]]},
  {id:"p1002",sellerId:"seller01",sales:86,title:"1000+ Viral AI Animal Reels Bundle | Ready-to-Post AI Animal Reels",category:"Reel Bundle",tags:["Animals","AI Reels","Entertainment"],price:49,oldPrice:89,description:"A creator pack focused on viral AI animal short videos and social-ready formats.",image:"https://images.unsplash.com/photo-1552053831-71594a27632d?auto=format&fit=crop&w=900&q=80",links:["https://example.com/ai-animal"],faq:[["Is this a physical product?","No. It is a digital product."],["How is access delivered?","A secure delivery link is shown after payment in the prototype."]]},
  {id:"p1003",sellerId:"seller01",sales:64,title:"1500+ Doraemon Reels Bundle 😺💙 | Viral Clips | HD Reels",category:"Reel Bundle",tags:["Cartoon","Entertainment","HD Reels"],price:49,oldPrice:79,description:"A themed short-video asset collection for creators. Review the seller policy before publishing.",image:"https://images.unsplash.com/photo-1535016120720-40c646be5580?auto=format&fit=crop&w=900&q=80",links:["https://example.com/cartoon"],faq:[["How many assets?","The exact asset count is listed in the product title and seller listing."],["Can I preview it?","Use the product image and seller description for this demo."]]},
- {id:"p1004",sellerId:"seller01",sales:152,title:"2000+ Mahadev Reels Bundle | ���49 | Hindi Devotional Reels Collection",category:"Reel Bundle",tags:["Devotional","Hindi","Reels"],price:49,oldPrice:99,description:"Hindi devotional short-form creator resources.",image:"https://images.unsplash.com/photo-1518709594023-6eab9bab7b23?auto=format&fit=crop&w=900&q=80",links:["https://example.com/mahadev"]},
+ {id:"p1004",sellerId:"seller01",sales:152,title:"2000+ Mahadev Reels Bundle | ₹49 | Hindi Devotional Reels Collection",category:"Reel Bundle",tags:["Devotional","Hindi","Reels"],price:49,oldPrice:99,description:"Hindi devotional short-form creator resources.",image:"https://images.unsplash.com/photo-1518709594023-6eab9bab7b23?auto=format&fit=crop&w=900&q=80",links:["https://example.com/mahadev"]},
  {id:"p1005",sellerId:"seller01",sales:73,title:"MR Bean Reels Bundle 🔥 | Funny Viral Videos Collection | Only ₹49",category:"Reel Bundle",tags:["Comedy","Funny","Viral Reels"],price:49,oldPrice:89,description:"Comedy-focused digital reel collection for creators.",image:"https://images.unsplash.com/photo-1524985069026-dd778a71c7b4?auto=format&fit=crop&w=900&q=80",links:["https://example.com/comedy"]},
  {id:"p1006",sellerId:"seller02",sales:42,title:"500+ Movie Clip Explanation Reels Bundle | Ready-to-Post",category:"Courses",tags:["Movie","Education","Explanation"],price:49,oldPrice:79,description:"Short-form movie explanation creator bundle.",image:"https://images.unsplash.com/photo-1485846234645-a62644f84728?auto=format&fit=crop&w=900&q=80",links:["https://example.com/movie-explain"]},
  {id:"p1007",sellerId:"seller02",sales:38,title:"3200+ Long Cartoon Videos Bundle | 16:9 HD Cartoon Videos | Ready to Use",category:"Editing Assets",tags:["Cartoon","HD","YouTube"],price:99,oldPrice:149,description:"Long-form cartoon editing assets in a ready-to-use digital bundle.",image:"https://images.unsplash.com/photo-1513106580091-1d82408b8cd5?auto=format&fit=crop&w=900&q=80",links:["https://example.com/cartoon-hd"]},
@@ -2529,7 +2544,7 @@ async function testPay(){
  const orderRef=uid("ord");
  const ok=await startRazorpayCheckout({
    amount:payable,
-   description:"Sale Earn — "+String(p.title||"Digital product"),
+   description:razorpaySafeDescription("Sale Earn - "+String(p.title||"Digital product")),
    customerName:pending.name||S.currentUser?.name||"Guest",
    customerEmail:pending.email||S.currentUser?.email||"",
    metadata:{
@@ -2614,7 +2629,7 @@ async function servicePayOnline(){
  const refId=x.id||uid("svc");
  const ok=await startRazorpayCheckout({
    amount:x.amount,
-   description:"Sale Earn — "+label,
+   description:razorpaySafeDescription("Sale Earn - "+label),
    customerName:S.currentUser?.name||currentSeller()?.name||"",
    customerEmail:S.currentUser?.email||"",
    metadata:{
@@ -3335,7 +3350,7 @@ async function completeReferralUpgradeOnline(){
  const sid=currentSeller()?.id;if(!sid)return;
  const ok=await startRazorpayCheckout({
    amount:x.price,
-   description:"Sale Earn — Referral upgrade",
+   description:razorpaySafeDescription("Sale Earn - Referral upgrade"),
    customerName:S.currentUser?.name||currentSeller()?.name||"",
    customerEmail:S.currentUser?.email||"",
    metadata:{
