@@ -2385,22 +2385,23 @@ function productCard(p){
  </article>`
 }
 function activeAds(){const now=Date.now();return (S.ads||[]).filter(a=>{const end=new Date(a.endDate||0).getTime(),start=new Date(a.startDate||0).getTime(),p=product(a.productId);return a.status==="ACTIVE"&&["ONLINE","BALANCE","RAZORPAY_TEST"].includes(String(a.paymentSource||""))&&a.paymentStatus==="SUCCESS"&&a.paymentVerified===true&&!!p&&p.sellerId===a.sellerId&&start<=now&&end>now})}
+function uniqueAdProducts(list){const seen=new Set();return (list||[]).filter(a=>{const id=String(a.productId||"");if(!id||seen.has(id))return false;seen.add(id);return true})}
 function startAdFromHome(id){if(!S.currentUser){openAuth("signin","seller");return}if(!currentSeller()){toast("Seller dashboard access required");return}if(currentSeller().id!==product(id)?.sellerId){toast("Only the product owner can boost this product");return}go("dashboard/ads")}
 function home(){
- const homepageAds=activeAds().filter(a=>String(a.placement||a.type||"").includes("Homepage"));
- const marketplaceAds=activeAds().filter(a=>String(a.placement||a.type||"").includes("Marketplace"));
+ const homepageAds=uniqueAdProducts(activeAds().filter(a=>String(a.placement||a.type||"").includes("Homepage")));
+ const marketplaceAds=uniqueAdProducts(activeAds().filter(a=>String(a.placement||a.type||"").includes("Marketplace")));
  const premiumIds=new Set([...homepageAds,...marketplaceAds].map(a=>a.productId));
  const premium=studioVisibleProducts().filter(p=>premiumIds.has(p.id));
  const picks=[...premium,...studioVisibleProducts().filter(p=>!premiumIds.has(p.id))];
  const repeated=[...picks,...picks].slice(0,12);
  const heroShowcase=repeated.length?`<div class="hero-art"><div class="hero-kicker">THE ULTIMATE DIGITAL ECONOMY · PREMIUM PICKS</div><div class="hero-track">${repeated.map(p=>`<div class="pick-card" onclick="go('product/${p.id}')">${thumb(p)}<div class="body"><h4>${esc(p.title)}</h4><span class="price">${money(p.price)}</span></div></div>`).join("")}</div></div>`:`<div class="hero-art hero-empty"><div class="hero-empty-mark">SE</div><div><div class="hero-kicker">CREATOR-FIRST MARKETPLACE</div><h3>Build, sell and discover digital products.</h3><p>Courses, creator bundles, editing assets and useful software in one calm workspace.</p></div><div class="hero-empty-tags"><span>Courses</span><span>Assets</span><span>Software</span></div></div>`;
  const ads=homepageAds;
- const homeAdStrip=ads.length?`<div class="ad-strip home-ad-strip"><div class="ad-track">${[...ads,...ads].map(a=>{const p=product(a.productId);return `<div class="ad-card" onclick="go('product/${a.productId}')"><div class="ad-thumb">${p?.image?`<img src="${esc(p.image)}">`:"📣"}</div><div><b>${esc(a.title||p?.title||"Sponsored")}</b><div class="small" style="color:#aeb8cc">${esc(a.placement||"Homepage")}</div></div></div>`}).join("")}</div></div>`:"";
+ const homeAdStrip=ads.length?`<div class="ad-strip home-ad-strip"><div class="ad-track">${ads.map(a=>{const p=product(a.productId);return `<div class="ad-card" onclick="go('product/${a.productId}')"><div class="ad-thumb">${p?.image?`<img src="${esc(p.image)}">`:"📣"}</div><div><b>${esc(a.title||p?.title||"Sponsored")}</b><div class="small" style="color:#aeb8cc">${esc(a.placement||"Homepage")}</div></div></div>`}).join("")}</div></div>`:"";
  const topProducts=[...premium].filter((p,i,a)=>a.findIndex(x=>x.id===p.id)===i).slice(0,10);
  const topRepeated=[...topProducts,...topProducts];
  return `${header()}
  <main class="page">
- ${homepageAds.length?`<section class="ad-premium"><div class="container"><div class="small" style="color:#bfc8dd;font-weight:900;margin-bottom:8px">ADVERTISEMENT · PREMIUM PRODUCTS</div></div><div class="ad-premium-track">${[...homepageAds,...homepageAds].map(a=>{const p=product(a.productId);return p?`<div class="ad-premium-card" onclick="go('product/${p.id}')"><div class="ad-thumb">${p.image?`<img src="${esc(p.image)}">`:`<span>🧩</span>`}</div><div class="ad-info"><div class="small" style="color:#aeb8cc">Seller ID: <span style="color:#fff;cursor:pointer" onclick="event.stopPropagation();go('seller/${p.sellerId}')">@${esc(p.sellerId)}</span></div><b>${esc(p.title)}</b><div class="ad-price">${money(p.price)}</div></div><button class="ad-boost" onclick="event.stopPropagation();startAdFromHome('${p.id}')">Ad / Boost</button></div>`:""}).join("")}</div></section>`:""}
+ ${homepageAds.length?`<section class="ad-premium"><div class="container"><div class="small" style="color:#bfc8dd;font-weight:900;margin-bottom:8px">ADVERTISEMENT · PREMIUM PRODUCTS</div></div><div class="ad-premium-track">${homepageAds.map(a=>{const p=product(a.productId);return p?`<div class="ad-premium-card" onclick="go('product/${p.id}')"><div class="ad-thumb">${p.image?`<img src="${esc(p.image)}">`:`<span>🧩</span>`}</div><div class="ad-info"><div class="small" style="color:#aeb8cc">Seller ID: <span style="color:#fff;cursor:pointer" onclick="event.stopPropagation();go('seller/${p.sellerId}')">@${esc(p.sellerId)}</span></div><b>${esc(p.title)}</b><div class="ad-price">${money(p.price)}</div></div><button class="ad-boost" onclick="event.stopPropagation();startAdFromHome('${p.id}')">Ad / Boost</button></div>`:""}).join("")}</div></section>`:""}
  <section id="home-hero" class="hero"><div class="container hero-grid">
   <div><div class="eyebrow">THE CREATOR MARKETPLACE</div><h1>${esc(ensurePlatformConfig().cms.heroTitle||"Turn your digital skills into products people want.")}</h1><p>${esc(ensurePlatformConfig().cms.heroSubtitle||"Discover ready-to-use creator assets, courses, reels bundles and software — or launch your own store with Sale Earn.")}</p>
   <div class="hero-actions"><button class="btn primary" onclick="go('market')">Explore Marketplace →</button><button class="btn" onclick="window.startSelling()">Start Selling</button></div></div>
@@ -2425,10 +2426,10 @@ function market(){ if(controlOff('marketplaceFreeze'))return `${header()}<main c
  const ads=activeAds(),boosted=new Set(ads.filter(a=>String(a.placement||"").includes("Search")).map(a=>a.productId)),marketplaceBoosted=new Set(ads.filter(a=>String(a.placement||"").includes("Marketplace")).map(a=>a.productId));
  if(q)ps=ps.filter(p=>searchRelevanceScore(p,q)>0);
  if(window.marketSort==="low")ps.sort((a,b)=>a.price-b.price); else if(window.marketSort==="high")ps.sort((a,b)=>b.price-a.price); else sortMarketProducts(ps,q,boosted,marketplaceBoosted);
- const marketplaceAds=ads.filter(a=>String(a.placement||a.type||"").includes("Marketplace"));
+ const marketplaceAds=uniqueAdProducts(ads.filter(a=>String(a.placement||a.type||"").includes("Marketplace")));
  const premiumIds=new Set(marketplaceAds.map(a=>a.productId));
  const premiumProducts=marketplaceAds.map(a=>product(a.productId)).filter(Boolean).filter((p,i,a)=>a.findIndex(x=>x.id===p.id)===i);
- const premiumRepeated=[...premiumProducts,...premiumProducts];
+ const premiumRepeated=premiumProducts;
  const cats=["All","Courses","Reel Bundle","Editing Assets","Software"];
  return `${header()}<main class="page"><div class="container page-title"><h1>Marketplace</h1><p class="muted">Find your next digital product.</p></div>
  ${marketplaceAds.length?`<section class="ad-premium"><div class="container"><div class="small" style="color:#bfc8dd;font-weight:900;margin-bottom:8px">ADVERTISEMENT · MARKETPLACE PREMIUM</div></div><div class="ad-premium-track">${premiumRepeated.map(p=>`<div class="ad-premium-card" onclick="go('product/${p.id}')"><div class="ad-thumb">${p.image?`<img src="${esc(p.image)}">`:`<span>🧩</span>`}</div><div class="ad-info"><div class="small" style="color:#aeb8cc">Seller ID: <span style="color:#fff;cursor:pointer" onclick="event.stopPropagation();go('seller/${p.sellerId}')">@${esc(p.sellerId)}</span></div><b>${esc(p.title)}</b><div class="ad-price">${money(p.price)}</div></div><button class="ad-boost" onclick="event.stopPropagation();startAdFromHome('${p.id}')">Ad / Boost</button></div>`).join("")}</div></section>`:""}
@@ -3292,7 +3293,7 @@ function dashSubscription(){
  const cfgPlans=(ensurePlatformConfig().plans||[]).slice(0,3);const plans=cfgPlans.filter(p=>p.active!==false&&!p.archived).map(p=>[p.id,p.name,p.monthly,Number(p.commissionPct||0)/100,(Array.isArray(p.featureText)&&p.featureText.length?p.featureText:[`Upload limit: ${p.uploadLimit}`,`Storage limit: ${p.storageLimit} MB`,p.prioritySupport?"Priority support":"Standard support"])])
  return dashShell("subscription",`<div class="plans">${plans.map(p=>`<div class="plan ${s.plan===p[0]?"current":""}"><h2>${p[1]}</h2><div class="plan-price">${money(p[2])}${p[0]!=="FREE"?" / month":""}</div><div style="text-align:center" class="pill">${Math.round(p[3]*100)}% Platform Fee</div><ul>${p[4].map(x=>`<li>${x}</li>`).join("")}</ul><button class="btn ${s.plan===p[0]?"":"primary"}" style="width:100%;margin-top:25px" onclick="${s.plan===p[0]?"toast('This plan is already active')":"buySubscription('"+p[0]+"')"}">${s.plan===p[0]?"Current Active Plan":"Purchase Plan"}</button></div>`).join("")}</div>
  <div class="dash-card"><h3>Referral Code</h3><p class="muted">Apply a referral code once. A valid referral gives 10% off the subscription; the referrer receives 5% of the final paid amount.</p><div style="display:flex;gap:8px"><input id="refCode" style="flex:1;border:1px solid var(--line);border-radius:11px;padding:11px" placeholder="ENTER CODE"><button class="btn" onclick="applyReferral()">Apply</button></div></div>
- <div class="dash-card" style="padding:0;overflow:hidden"><h3 style="padding:18px;margin:0">Subscription Pay History</h3><table class="dash-table"><thead><tr><th>Plan</th><th>Amount</th><th>Discount</th><th>Payment</th><th>Date</th><th>Status</th></tr></thead><tbody>${history.map(x=>{const end=subscriptionEndDate(x);const active=end&&Date.now()<end.getTime();return `<tr><td>${esc(x.plan)}</td><td>${money(x.amount)}</td><td>${money(x.discount||0)}</td><td>${esc(x.paymentSource||"ONLINE")}</td><td>${new Date(x.date).toLocaleString('en-IN')}</td><td><span class="status ${active?"success":"cancelled"}">${active?"ACTIVE":"EXPIRED"}</span></td></tr>`}).join("")||`<tr><td colspan="6" style="text-align:center;padding:30px">No subscription payment history yet.</td></tr>`}</tbody></table></div>`)
+ <div class="dash-card" style="padding:0;overflow:hidden"><h3 style="padding:18px;margin:0">Subscription Pay History</h3><table class="dash-table"><thead><tr><th>Plan</th><th>Amount</th><th>Discount</th><th>Payment</th><th>Date</th><th>Status</th></tr></thead><tbody>${history.map(x=>{const end=subscriptionEndDate(x);const active=end&&Date.now()<end.getTime();return `<tr><td>${esc(x.plan)}</td><td>${money(x.amount)}</td><td>${money(x.discount||0)}</td><td>${esc(x.paymentSource||"ONLINE")}</td><td>${new Date(x.date).toLocaleString('en-IN')}</td><td><span class="status ${String(x.status||"").toUpperCase()==="CANCELLED"?"cancelled":active?"success":"cancelled"}">${String(x.status||"").toUpperCase()==="CANCELLED"?"CANCELLED":active?"ACTIVE":"EXPIRED"}</span></td></tr>`}).join("")||`<tr><td colspan="6" style="text-align:center;padding:30px">No subscription payment history yet.</td></tr>`}</tbody></table></div>`)
 }
 function buySubscription(plan){
  if(!systemGuard("subscriptions","Subscriptions are temporarily disabled by Admin"))return;
@@ -5970,4 +5971,313 @@ button,.btn{touch-action:manipulation}
 </script>
 
 <!-- data-saleearn-website-boot-resilience="v1" -->
+
+<!-- data-saleearn-premium-ads-layout="v2" -->
+<style id="saleearn-premium-ads-layout-v2">
+/* Premium ads are a responsive collection, not an endlessly clipped marquee. */
+.ad-premium{padding:16px 0 18px;overflow:hidden}
+.ad-premium-track{width:min(1240px,calc(100% - 32px));margin:0 auto;display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr));gap:14px;animation:none!important;transform:none!important}
+.ad-premium-card{width:100%;min-width:0;min-height:92px;box-sizing:border-box}
+.ad-premium-card .ad-info{min-width:0;overflow:hidden}
+.ad-premium-card .ad-info b{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ad-premium-card .ad-boost{flex:0 0 auto;white-space:nowrap}
+html:root[data-theme="light"] .ad-premium{background:linear-gradient(135deg,#eef1ff,#f8f9ff);color:#172033;border-top:1px solid #dfe4f4;border-bottom:1px solid #dfe4f4}
+html:root[data-theme="light"] .ad-premium-card{background:#fff!important;color:#172033!important;border-color:#dfe4f0!important;box-shadow:0 10px 24px rgba(31,42,78,.07)!important}
+html:root[data-theme="light"] .ad-premium-card .small{color:#69758b!important}
+html:root[data-theme="light"] .ad-premium-card .small span{color:#3f4d67!important}
+html:root[data-theme="light"] .ad-premium-card .ad-price{color:#9a6500!important}
+html:root[data-theme="light"] .ad-premium-card .ad-boost{background:#f5c83d;color:#2c2609}
+html:root[data-theme="dark"] .ad-premium{background:linear-gradient(135deg,#0f192d,#121e35);border-top:1px solid #25334e;border-bottom:1px solid #25334e}
+@media(max-width:760px){
+  .ad-premium{padding:13px 0 15px}
+  .ad-premium-track{width:calc(100% - 24px);grid-template-columns:1fr;gap:10px}
+  .ad-premium-card{min-height:80px;padding:9px;gap:9px;border-radius:13px}
+  .ad-premium-card .ad-thumb{width:58px;height:58px;border-radius:9px}
+  .ad-premium-card .ad-boost{padding:8px 9px;font-size:11px}
+}
+@media(max-width:420px){
+  .ad-premium-card .ad-info .small{font-size:10px}
+  .ad-premium-card .ad-info b{font-size:13px}
+  .ad-premium-card .ad-boost{font-size:10px;padding:8px 8px}
+}
+</style>
+
+<!-- data-saleearn-seller-profile-mobile="v2" -->
+<style id="saleearn-seller-profile-mobile-v2">
+/* Seller storefront: compact, readable mobile detail hierarchy. */
+.seller-profile{padding-bottom:110px}
+.store-banner{min-height:170px;background-position:center;background-size:cover;background-repeat:no-repeat;border-radius:20px;margin-top:15px;border:1px solid var(--line);box-shadow:var(--shadow-soft,0 10px 26px rgba(20,32,60,.08))}
+.seller-profile .profile-head{min-width:0}
+.seller-profile .profile-meta{min-width:0;overflow-wrap:anywhere}
+.seller-profile .profile-meta h1{overflow-wrap:anywhere;word-break:break-word}
+.seller-profile .stats span{min-width:0}
+.seller-profile .seller-tools{align-items:stretch}
+.seller-profile .seller-tools .pill{justify-content:center;min-width:0;white-space:normal;text-align:center;overflow-wrap:anywhere}
+.trust-grid{min-width:0}
+.trust-item{min-width:0;overflow:hidden}
+.trust-item small,.trust-item b{overflow-wrap:anywhere;word-break:break-word}
+.store-about,.store-video,.store-policies{overflow-wrap:anywhere}
+.store-socials .btn{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+@media(max-width:760px){
+  .seller-profile{padding-top:14px;padding-bottom:calc(116px + env(safe-area-inset-bottom))}
+  .seller-profile>.container{padding-left:12px!important;padding-right:12px!important}
+  .seller-profile>.container>button:first-child{min-height:40px;margin-bottom:2px}
+  .seller-profile .store-banner{min-height:130px;margin-top:10px;border-radius:16px}
+  .seller-profile .profile-head{display:grid!important;grid-template-columns:76px minmax(0,1fr)!important;gap:12px!important;align-items:start!important;padding:14px!important;margin-top:12px!important;border-radius:18px!important}
+  .seller-profile .profile-logo{width:76px!important;height:76px!important;border-radius:18px!important;font-size:25px!important;grid-column:1;grid-row:1}
+  .seller-profile .profile-meta{grid-column:2;grid-row:1;align-self:start;width:auto!important}
+  .seller-profile .profile-meta h1{font-size:20px!important;line-height:1.12!important;margin:1px 0 5px!important}
+  .seller-profile .profile-meta>p{font-size:11px!important;line-height:1.35!important;margin:0 0 8px!important}
+  .seller-profile .profile-meta .pill{display:block;width:100%;font-size:10px;line-height:1.25;padding:6px 8px;white-space:normal;overflow-wrap:anywhere}
+  .seller-profile .stats{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px!important;margin-top:10px!important;font-size:10px!important;line-height:1.25!important}
+  .seller-profile .stats span{text-align:center;display:block;overflow-wrap:anywhere}
+  .seller-profile .stats b{display:block;font-size:14px;line-height:1.1;margin-bottom:2px}
+  .seller-profile .seller-profile-actions{grid-column:1/-1;grid-row:2;width:100%!important;gap:9px!important}
+  .seller-profile .seller-score-card.compact{padding:11px!important;margin:0!important;border-radius:14px!important}
+  .seller-profile .seller-score-head{gap:8px!important}
+  .seller-profile .seller-score-head strong{font-size:24px!important}
+  .seller-profile .seller-score-track{height:10px;margin-top:9px}
+  .seller-profile .seller-action-buttons{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px!important;width:100%}
+  .seller-profile .seller-action-buttons .btn{width:100%!important;min-height:44px!important;margin:0!important}
+  .seller-profile .seller-tools{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px!important;margin-top:12px!important}
+  .seller-profile .seller-tools .btn,.seller-profile .seller-tools .pill{width:100%!important;min-height:42px;display:flex;align-items:center;justify-content:center}
+  .seller-profile .seller-tools .pill{grid-column:span 1;padding:8px 7px;font-size:10px}
+  .seller-profile .section-head{margin-top:20px!important;margin-bottom:12px!important}
+  .seller-profile .section-head h2{font-size:20px!important;margin-bottom:4px!important}
+  .seller-profile .section-head p{font-size:12px!important;line-height:1.5!important;margin:0!important;overflow-wrap:anywhere}
+  .seller-profile .seller-products{gap:10px!important}
+  .seller-profile .seller-products .product-card .thumb{height:190px!important}
+  .seller-profile .trust-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:9px!important;margin-top:14px!important}
+  .seller-profile .trust-item{padding:11px 10px!important;border-radius:13px!important;min-height:70px}
+  .seller-profile .trust-item small{font-size:10px!important;line-height:1.25!important;display:block}
+  .seller-profile .trust-item b{font-size:16px!important;line-height:1.15!important;margin-top:5px;display:block}
+  .seller-profile .store-about,.seller-profile .store-video,.seller-profile .store-policies{padding:15px!important;border-radius:16px!important;margin-top:14px!important}
+  .seller-profile .store-about h2,.seller-profile .store-video h2,.seller-profile .store-policies h2{font-size:19px!important}
+  .seller-profile .store-socials{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:8px!important;margin-top:14px}
+  .seller-profile .store-socials .btn{width:100%!important;min-height:42px!important;padding:9px 7px!important;font-size:11px!important}
+}
+@media(max-width:360px){
+  .seller-profile>.container{padding-left:10px!important;padding-right:10px!important}
+  .seller-profile .profile-head{grid-template-columns:68px minmax(0,1fr)!important;gap:10px!important;padding:12px!important}
+  .seller-profile .profile-logo{width:68px!important;height:68px!important;border-radius:16px!important}
+  .seller-profile .profile-meta h1{font-size:18px!important}
+  .seller-profile .stats{font-size:9px!important}
+  .seller-profile .stats b{font-size:13px!important}
+  .seller-profile .seller-score-head b{font-size:12px!important}
+  .seller-profile .seller-score-head strong{font-size:22px!important}
+  .seller-profile .seller-tools .pill{font-size:9px!important}
+}
+</style>
+
+<!-- data-saleearn-seller-grid-list-mobile="v2" -->
+<style id="saleearn-seller-grid-list-mobile-v2">
+/* Seller product switcher: distinct, touch-friendly grid and list modes. */
+.seller-products.grid-view{align-items:stretch}
+.seller-products.grid-view .product-card{min-width:0;display:flex;flex-direction:column}
+.seller-products.grid-view .product-card .thumb{aspect-ratio:16/10;height:auto!important;min-height:0!important}
+.seller-products.grid-view .product-card .body{display:flex;flex:1;min-width:0;flex-direction:column}
+.seller-products.grid-view .product-card .body>div:last-child{margin-top:auto}
+.seller-products.list-view{display:grid!important;grid-template-columns:minmax(0,1fr)!important;gap:12px!important}
+.seller-products.list-view .product-card{display:grid!important;grid-template-columns:180px minmax(0,1fr)!important;min-width:0;align-items:stretch}
+.seller-products.list-view .product-card .thumb{height:100%!important;min-height:170px!important;aspect-ratio:auto!important}
+.seller-products.list-view .product-card .body{min-width:0;display:flex;flex-direction:column;justify-content:center}
+.seller-products.list-view .product-card h3{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;overflow-wrap:anywhere}
+.seller-products.list-view .product-card .product-tags{max-width:100%;overflow:hidden}
+
+@media(max-width:760px){
+  .seller-products.grid-view{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:10px!important}
+  .seller-products.grid-view .product-card{border-radius:14px!important}
+  .seller-products.grid-view .product-card .thumb{aspect-ratio:1/1!important}
+  .seller-products.grid-view .product-card .body{padding:10px!important}
+  .seller-products.grid-view .product-card h3{font-size:13px!important;line-height:1.25!important;min-height:33px}
+  .seller-products.grid-view .product-card .seller-line{font-size:10px!important;margin-top:8px!important}
+  .seller-products.grid-view .product-card .btn{min-height:40px!important;padding:8px 9px!important;font-size:11px!important}
+  .seller-products.list-view{gap:10px!important}
+  .seller-products.list-view .product-card{grid-template-columns:104px minmax(0,1fr)!important;min-height:126px!important;border-radius:14px!important}
+  .seller-products.list-view .product-card .thumb{min-height:126px!important}
+  .seller-products.list-view .product-card .body{padding:10px!important}
+  .seller-products.list-view .product-card h3{font-size:14px!important;line-height:1.25!important;margin:3px 0 5px!important}
+  .seller-products.list-view .product-card .seller-line{font-size:10px!important;margin-top:6px!important}
+  .seller-products.list-view .product-card .btn{min-height:38px!important;padding:7px 9px!important;font-size:11px!important}
+  .seller-products.list-view .product-card .product-tags{display:flex;flex-wrap:nowrap;gap:3px}
+  .seller-products.list-view .product-card .tag{font-size:9px!important;padding:4px 6px!important;margin:0!important}
+}
+@media(max-width:360px){
+  .seller-products.grid-view{grid-template-columns:1fr!important;gap:12px!important}
+  .seller-products.grid-view .product-card .thumb{aspect-ratio:16/10!important}
+  .seller-products.grid-view .product-card h3{font-size:14px!important}
+  .seller-products.list-view .product-card{grid-template-columns:88px minmax(0,1fr)!important}
+  .seller-products.list-view .product-card .thumb{min-height:112px!important}
+  .seller-products.list-view .product-card .body{padding:9px!important}
+}
+</style>
+
+<!-- data-saleearn-subscription-cancellation="v1" -->
+<script id="saleearn-subscription-cancellation-v1">
+(function(){
+  'use strict';
+  const cancelledStates=new Set(['CANCELLED','CANCELED','REVOKED','FAILED','VOID']);
+  const upper=v=>String(v||'').trim().toUpperCase();
+  const planConfig=()=>{try{return ensurePlatformConfig()}catch{return S.platformConfig||{plans:[]}}};
+  const planById=id=>{const key=upper(id||'FREE');return (planConfig().plans||[]).find(x=>upper(x.id)===key)||{id:'FREE',name:'FREE',uploadLimit:10,ads:false,analytics:false,referrals:true,advanced:false,prioritySupport:false,verified:false,commissionPct:20}};
+  const validDate=v=>{const t=new Date(v||0).getTime();return Number.isFinite(t)?t:NaN};
+  const subscriptionEnd=x=>{const st=validDate(x?.startDate||x?.date),end=validDate(x?.endDate);return Number.isFinite(end)?end:(Number.isFinite(st)?st+SUBSCRIPTION_DURATION_MS:NaN)};
+  const subscriptionActive=(x,t)=>{
+    if(!x||cancelledStates.has(upper(x.status)))return false;
+    if(upper(x.paymentStatus||'SUCCESS')!=='SUCCESS'||x.paymentVerified===false)return false;
+    const started=validDate(x.startDate||x.date),ends=subscriptionEnd(x),cancelledAt=validDate(x.cancelledAt);
+    return Number.isFinite(started)&&started<=t&&Number.isFinite(ends)&&t<ends&&(!Number.isFinite(cancelledAt)||cancelledAt>t);
+  };
+  window.activeSubscriptionAt=function(sid,when){
+    const t=validDate(when)||Date.now();
+    return (S.subscriptions||[]).filter(x=>x.sellerId===sid&&subscriptionActive(x,t)).sort((a,b)=>validDate(b.startDate||b.date)-validDate(a.startDate||a.date))[0]||null;
+  };
+  window.sellerPlanNow=function(sid,when){
+    const sub=window.activeSubscriptionAt(sid,when||Date.now()),s=S.sellers?.[sid];
+    return upper(sub?.plan||s?.plan||'FREE')||'FREE';
+  };
+  window.sellerPlanConfig=function(sid,when){return planById(window.sellerPlanNow(sid,when))};
+  window.sellerPlanFeatureActive=function(sid,feature,when){
+    const p=window.sellerPlanConfig(sid,when);
+    return p[feature]!==false;
+  };
+  window.sellerProductLimit=function(sid,when){
+    const p=window.sellerPlanConfig(sid,when),global=Number(planConfig().rules?.productUploadLimit||1e9),limit=Number(p.uploadLimit);
+    return Math.max(0,Math.min(Number.isFinite(global)?global:1e9,Number.isFinite(limit)?limit:10));
+  };
+  window.subscriptionCancellationState=function(sid){
+    const s=S.sellers?.[sid];
+    return !!(s?.subscriptionStatus==='CANCELLED'||s?.subscriptionCancelledAt);
+  };
+
+  // Keep the seller's stored product list untouched when a plan is cancelled.
+  // Only future publishing/restoring is blocked by the current plan limit.
+  const priorPublish=window.publishProduct;
+  if(priorPublish)window.publishProduct=function(editId){
+    const seller=typeof currentSeller==='function'?currentSeller():null;
+    if(seller&&!editId){
+      const listed=(S.products||[]).filter(x=>x.sellerId===seller.id).length;
+      const limit=window.sellerProductLimit(seller.id);
+      if(listed>=limit){toast('Product limit reached ('+limit+'). Existing products were kept. Buy a plan to add more.');return}
+    }
+    return priorPublish.apply(this,arguments);
+  };
+  const priorDraftLimit=window.draftLimitForSeller;
+  window.draftLimitForSeller=function(s){return s?.id?window.sellerProductLimit(s.id):(priorDraftLimit?priorDraftLimit(s):10)};
+  const priorRestore=window.restoreRecycled;
+  if(priorRestore)window.restoreRecycled=function(id){
+    const x=(S.deletedProducts||[]).find(p=>p.id===id),seller=typeof currentSeller==='function'?currentSeller():null;
+    if(x&&x.recycledFrom!=='drafts'&&seller){
+      const listed=(S.products||[]).filter(p=>p.sellerId===seller.id).length;
+      const limit=window.sellerProductLimit(seller.id);
+      if(listed>=limit){toast('Product limit reached ('+limit+'). Buy a plan to restore/add this product.');return}
+    }
+    return priorRestore.apply(this,arguments);
+  };
+
+  // Only the admin can cancel. Cancellation is immediate and does not rewrite
+  // any historical order fee/earnings snapshot.
+  const priorCancel=window.adminCancelService;
+  window.adminCancelService=function(type,id){
+    if(typeof adminOnly==='function'&&!adminOnly())return;
+    if(type!=='subscription')return priorCancel?priorCancel.apply(this,arguments):undefined;
+    const sub=(S.subscriptions||[]).find(x=>x.id===id);
+    if(!sub||cancelledStates.has(upper(sub.status)))return;
+    const seller=S.sellers?.[sub.sellerId];
+    const refund=Math.round((typeof prorata==='function'?prorata(sub):0)*100)/100;
+    sub.status='CANCELLED';sub.cancelledAt=nowISO();sub.cancelledBy=S.currentUser?.id||'ADMIN';sub.cancellationReason='Cancelled by Admin';sub.endDate=sub.cancelledAt;sub.featuresDeactivatedAt=sub.cancelledAt;
+    if(seller){
+      seller.plan='FREE';
+      seller.subscriptionStatus='CANCELLED';
+      seller.subscriptionCancelledAt=sub.cancelledAt;
+      seller.activeSubscriptionId=null;
+      seller.planFeaturesDeactivatedAt=sub.cancelledAt;
+    }
+    S.balancePayments=S.balancePayments||[];S.serviceRefunds=S.serviceRefunds||[];
+    if(refund>0)S.balancePayments.unshift({id:uid('refund'),sellerId:sub.sellerId,amount:-refund,kind:'subscriptionRefund',source:'BALANCE',status:'SUCCESS',paymentVerified:true,date:nowISO(),subscriptionId:id});
+    S.serviceRefunds.unshift({id:uid('sr'),sellerId:sub.sellerId,type:'subscription',refId:id,amount:refund,reason:'ADMIN_CANCELLED',date:nowISO()});
+    try{adminAudit('Cancelled subscription immediately',id,{sellerId:sub.sellerId,plan:sub.plan,refund,featuresDeactivated:true,existingProductsKept:true})}catch{}
+    if(typeof syncSubscriptionPlans==='function')syncSubscriptionPlans();
+    save();toast('Subscription cancelled. Plan features are now inactive; existing products were kept.');render();
+  };
+
+  // Subscription-controlled entry points are blocked immediately after cancel.
+  const guardPlanFeature=(feature,message)=>{
+    const sid=typeof currentSeller==='function'?currentSeller()?.id:null;
+    if(!sid||window.sellerPlanFeatureActive(sid,feature))return true;
+    toast(message||('This '+feature+' feature requires an active plan.'));return false;
+  };
+  const priorOpenAd=window.openAdCampaign;
+  if(priorOpenAd)window.openAdCampaign=function(){if(!guardPlanFeature('ads','Ads are inactive on the FREE plan. Buy a plan to use Ads.'))return;return priorOpenAd.apply(this,arguments)};
+  const priorCreateAd=window.createAd;
+  if(priorCreateAd)window.createAd=function(){if(!guardPlanFeature('ads','Ads are inactive on the FREE plan. Buy a plan to use Ads.'))return;return priorCreateAd.apply(this,arguments)};
+  const priorDashAds=window.dashAds;
+  if(priorDashAds)window.dashAds=function(){
+    const sid=typeof currentSeller==='function'?currentSeller()?.id:null;
+    if(sid&&!window.sellerPlanFeatureActive(sid,'ads'))return dashShell('ads','<div class="dash-card"><h2>Ads inactive</h2><p class="muted">Your subscription was cancelled. Existing products and sales remain safe, but plan Ads features are inactive until you buy a plan again.</p><button class="btn primary" onclick="go(\'dashboard/subscription\')">View Plans</button></div>');
+    return priorDashAds.apply(this,arguments);
+  };
+
+  // Sync once on every render so an expired/cancelled plan cannot keep premium state.
+  const priorRender=window.render;
+  if(priorRender)window.render=function(){
+    try{if(typeof syncSubscriptionPlans==='function')syncSubscriptionPlans()}catch{}
+    return priorRender.apply(this,arguments);
+  };
+  try{if(typeof syncSubscriptionPlans==='function')syncSubscriptionPlans()}catch{}
+})();
+</script>
+
+<!-- data-saleearn-message-pack-payments="v2" -->
+<style id="saleearn-message-pack-payments-v2">
+.message-pack-payment-copy{margin:10px 0 16px;padding:12px;border:1px solid var(--line);border-radius:12px;background:var(--surface2,var(--card));font-size:12px;line-height:1.55}
+.message-pack-payment-copy b{display:block;font-size:14px;margin-bottom:3px}
+@media(max-width:600px){.message-pack-payment-actions{display:grid!important;grid-template-columns:1fr!important}.message-pack-payment-actions .btn{width:100%!important}}
+</style>
+<script id="saleearn-message-pack-payments-v2-script">
+(function(){
+  'use strict';
+  function messagePackConfig(){return S.messageSettings||{packPrice:10,packMessages:20,maxPacksPerDay:10}}
+  function messagePackSeller(){return typeof currentSeller==='function'?currentSeller():null}
+  function messagePackAlreadyPaid(gatewayId){return !!gatewayId&&(S.messagePacks||[]).some(x=>String(x.gatewayPaymentId||'')===String(gatewayId)&&x.status==='SUCCESS')}
+  function recordMessagePack(source,response,referenceId){
+    const s=messagePackSeller(),cfg=messagePackConfig();if(!s)return false;
+    const day=todayKey(),count=(S.messagePacks||[]).filter(x=>x.sellerId===s.id&&x.day===day&&x.status==='SUCCESS').length;
+    if(count>=Number(cfg.maxPacksPerDay||10)){toast('Daily message pack limit reached');return false}
+    const gatewayId=response?.razorpay_payment_id||response?.gatewayPaymentId||response?.id||null;
+    if(messagePackAlreadyPaid(gatewayId))return false;
+    S.messagePacks=S.messagePacks||[];
+    S.messagePacks.unshift({id:uid('mp'),sellerId:s.id,userId:S.currentUser?.id||null,day,amount:Number(cfg.packPrice||10),messages:Number(cfg.packMessages||20),source,paymentStatus:'SUCCESS',status:'SUCCESS',paymentVerified:true,gatewayPaymentId:gatewayId,razorpayOrderId:response?.razorpay_order_id||response?.razorpayOrderId||null,date:nowISO()});
+    save();closeModal();toast(Number(cfg.packMessages||20)+' extra messages added');render();return true;
+  }
+  window.openMessagePack=function(){
+    const c=messagePackConfig(),s=messagePackSeller();if(!s)return;
+    document.getElementById('modalRoot').innerHTML=`<div class="modal-bg" onclick="if(event.target===this)closeModal()"><div class="modal"><button class="btn iconbtn close" onclick="closeModal()">×</button><h2>Add message limit</h2><div class="message-pack-payment-copy"><b>Get ${esc(c.packMessages)} extra messages today</b>Pay ${money(c.packPrice)} using Razorpay or Sale Earn Web Test checkout.</div><div class="message-pack-payment-actions modal-footer"><button class="btn primary" onclick="buyMessagePack('RAZORPAY_TEST')">Pay Online with Razorpay</button><button class="btn" onclick="openMessagePackWebPayment()">Pay from Web</button></div></div></div>`;
+  };
+  window.buyMessagePack=async function(source){
+    const s=messagePackSeller(),c=messagePackConfig();if(!s)return;
+    const ref=uid('msgpack');
+    if(source==='BALANCE')return window.openMessagePackWebPayment();
+    if(source!=='ONLINE_TEST'&&source!=='RAZORPAY_TEST')return;
+    if(!systemGuard('payments','Payments are temporarily disabled by Admin'))return;
+    document.getElementById('modalRoot').innerHTML='<div class="modal-bg"><div class="modal" style="text-align:center;padding:34px"><div style="font-size:42px">💳</div><h2>Opening Razorpay</h2><p class="muted">Message pack will activate only after payment verification.</p></div></div>';
+    const ok=await startRazorpayCheckout({amount:Number(c.packPrice||10),description:razorpaySafeDescription('Sale Earn - Message pack'),customerName:S.currentUser?.name||s.name||'',customerEmail:S.currentUser?.email||'',metadata:{kind:'messagePack',referenceId:ref,sellerId:s.id,messages:Number(c.packMessages||20)},onVerified:async(response)=>{if(recordMessagePack('RAZORPAY_TEST',response,ref))toast('Razorpay payment verified');}});
+    if(!ok)closeModal();
+  };
+  window.openMessagePackWebPayment=function(){
+    const c=messagePackConfig(),s=messagePackSeller();if(!s)return;
+    window.messagePackWebPayment={amount:Number(c.packPrice||10),messages:Number(c.packMessages||20),sellerId:s.id,referenceId:uid('webmsgpack')};
+    document.getElementById('modalRoot').innerHTML=`<div class="modal-bg" onclick="if(event.target===this)closeModal()"><div class="modal payment-modal-wide"><button class="btn iconbtn close" onclick="closeModal()">×</button><div class="payment-layout"><aside class="payment-left"><div class="payment-left-title"><span class="logo-mark">SE</span><span>Sale Earn Web Checkout</span></div><div class="payment-total"><span>Messages</span><span>${esc(c.messages)}</span></div><div class="payment-total"><span>Total</span><span>${money(c.packPrice)}</span></div><div class="payment-methods"><h4>Pay from Web</h4><button class="pay-opt active" onclick="selectMessagePackWebPay(this,'UPI')">🔶 <span><b>UPI Test</b><small style="display:block;color:#7a8599;font-weight:600">Website test payment</small></span></button><button class="pay-opt" onclick="selectMessagePackWebPay(this,'Card')">▣ <span>Card Test</span></button><button class="pay-opt" onclick="selectMessagePackWebPay(this,'Paytm')">◉ <span>Paytm Test</span></button></div><div style="margin-top:auto;border-top:1px solid #e7e9ef;padding-top:15px;text-align:center;color:#7a8599;font-size:11px">Sale Earn Web Test Mode · No real charge</div></aside><section class="payment-right"><div class="payment-right-inner"><h2 style="text-align:center;margin:4px 0 5px">Web Payment</h2><div id="messagePackWebForm" class="pay-form"><div style="text-align:center"><h3>UPI Test Checkout</h3><p class="small muted">This is the existing Sale Earn web test payment page.</p><div class="payment-qr"><div class="payment-expire">Test payment ready</div></div></div></div><div class="modal-footer" style="margin-top:18px"><button class="btn" onclick="openMessagePack()">← Previous</button><button class="btn primary" onclick="completeMessagePackWebPayment()">Pay ${money(c.packPrice)} from Web</button></div></div></section></div></div></div>`;
+  };
+  window.selectMessagePackWebPay=function(btn,type){document.querySelectorAll('.payment-left .pay-opt').forEach(x=>x.classList.remove('active'));btn.classList.add('active');const box=document.getElementById('messagePackWebForm');if(!box)return;box.innerHTML=type==='UPI'?'<div style="text-align:center"><h3>UPI Test Checkout</h3><p class="small muted">Website UPI test payment selected.</p><div class="payment-qr"><div class="payment-expire">Test payment ready</div></div></div>':type==='Card'?'<div class="form-grid"><div class="field"><label>Card Number</label><input inputmode="numeric" placeholder="Test card number"></div><div class="field"><label>Expiry</label><input placeholder="MM/YY"></div><div class="field"><label>CVV</label><input inputmode="numeric" placeholder="123"></div></div><p class="small muted">Prototype/test mode only. Do not enter a real card.</p>':'<div class="field"><label>Paytm Mobile</label><input placeholder="98xxxxxx00"></div><p class="small muted">Prototype/test mode only.</p>'};
+  window.completeMessagePackWebPayment=function(){
+    if(!systemGuard('payments','Payments are temporarily disabled by Admin'))return;
+    const x=window.messagePackWebPayment,s=messagePackSeller();if(!x||!s)return;
+    const tx=fakeGatewayCreate('messagePack',x.amount,{refId:x.referenceId,sellerId:s.id,recipient:'ADMIN',source:'WEB_TEST'});
+    document.getElementById('modalRoot').innerHTML='<div class="modal-bg"><div class="modal" style="text-align:center;padding:34px"><div style="font-size:42px">⏳</div><h2>Verifying Web Payment</h2><p class="muted">Checking Sale Earn test transaction...</p></div></div>';
+    setTimeout(()=>{if(!fakeGatewayMarkSuccess(tx.id)){fakeGatewayFail(tx.id,'Web test gateway did not report success');toast('Web payment failed');return}setTimeout(()=>{if(!fakeGatewayVerify(tx.id,{userId:s.id,amount:x.amount,kind:'messagePack',recipient:'ADMIN',refId:x.referenceId})){fakeGatewayFail(tx.id,'Web test verification mismatch');toast('Web payment verification failed');return}const added=recordMessagePack('WEB_TEST',{id:tx.id,gatewayPaymentId:tx.id},x.referenceId);if(added)toast('Web payment verified')},450)},450);
+  };
+})();
+</script>
 </html>
