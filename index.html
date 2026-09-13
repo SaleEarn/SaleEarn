@@ -6205,4 +6205,62 @@ html:root[data-theme="dark"] .ad-premium{background:linear-gradient(135deg,#0f19
   .seller-products.list-view .product-card .body{padding:9px!important}
 }
 </style>
+
+<script id="saleearn-featured-product-select">
+/* Featured products: seller can select products from their own catalog. */
+(function(){
+  const previousDashStoreSettings = window.dashStoreSettings;
+  window.dashStoreSettings = function(){
+    const html = previousDashStoreSettings();
+    const s = currentSeller();
+    if(!s) return html;
+    const t = storeTheme(s.id);
+    const ownProducts = (S.products||[]).filter(p=>String(p.sellerId)===String(s.id));
+    const selected = new Set((t.featuredProducts||[]).map(String));
+    const options = ownProducts.length
+      ? ownProducts.map(p=>`<option value="${esc(p.id)}" ${selected.has(String(p.id))?'selected':''}>${esc(p.title||p.id)}${p.price!=null?' · '+money(p.price):''}</option>`).join('')
+      : '<option value="" disabled>No products available</option>';
+
+    const tpl = document.createElement('template');
+    tpl.innerHTML = html;
+    const input = tpl.content.querySelector('#v19Featured');
+    if(input){
+      const field = input.closest('.field');
+      if(field){
+        field.outerHTML = `<div class="field">
+          <label>Featured Products</label>
+          <select id="v19Featured" multiple size="${Math.min(7,Math.max(3,ownProducts.length||3))}" style="min-height:140px">${options}</select>
+          <small class="muted">Select one or more of your products to feature on your public store. Hold Ctrl/Cmd to select multiple.</small>
+        </div>`;
+      }
+    }
+    return tpl.innerHTML;
+  };
+
+  const previousSaveV19Store = window.saveV19Store;
+  window.saveV19Store = function(){
+    const el = document.getElementById('v19Featured');
+    if(!el) return previousSaveV19Store();
+    const selected = [...el.selectedOptions].map(o=>o.value).filter(Boolean);
+    const s = currentSeller();
+    if(!s) return previousSaveV19Store();
+    const ownIds = new Set((S.products||[]).filter(p=>String(p.sellerId)===String(s.id)).map(p=>String(p.id)));
+    const featured = selected.filter(id=>ownIds.has(String(id)));
+
+    const old = previousSaveV19Store;
+    const originalValue = el.value;
+    Object.defineProperty(el, 'value', {
+      configurable:true,
+      get(){ return featured.join(','); },
+      set(v){}
+    });
+    try {
+      return old();
+    } finally {
+      try { Object.defineProperty(el, 'value', {configurable:true,writable:true,value:originalValue}); } catch(e){}
+    }
+  };
+})();
+</script>
+
 </html>
