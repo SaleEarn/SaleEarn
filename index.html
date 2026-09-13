@@ -1968,7 +1968,7 @@ const seed={
 };
 function load(){
  try{const raw=localStorage.getItem(KEY); if(!raw){localStorage.setItem(KEY,JSON.stringify(seed));return structuredClone(seed)}
- const d=JSON.parse(raw); return Object.assign(structuredClone(seed),d,{users:d.users||[],sellers:d.sellers||{},products:d.products||[],orders:d.orders||[],reviews:d.reviews||{},follows:d.follows||{},payouts:d.payouts||[],ads:d.ads||[],referrals:d.referrals||[],subscriptions:d.subscriptions||[],warnings:d.warnings||[],devices:d.devices||[],deletedProducts:d.deletedProducts||[],cart:d.cart||[],library:d.library||[],saved:d.saved||[],settings:Object.assign({currency:"INR",referralUsedBy:{},websiteUpi:"saleearn.demo@upi"},d.settings||{}),balancePayments:d.balancePayments||[],drafts:d.drafts||[],productActivity:d.productActivity||[],adminAuditLog:d.adminAuditLog||[],adminControls:Object.assign({marketplaceFreeze:false,newSellerRegistration:false,productUploads:false,withdrawals:false,payments:false,ads:false,referrals:false},d.adminControls||{}),riskAlerts:d.riskAlerts||[],coupons:d.coupons||[],couponRedemptions:d.couponRedemptions||[],storeThemes:d.storeThemes||{},securityEvents:d.securityEvents||[],sellerRankings:d.sellerRankings||[],growthGoals:d.growthGoals||{},platformConfig:d.platformConfig||{},notifications:d.notifications||[],messages:d.messages||[],mailMessages:d.mailMessages||[],disputes:d.disputes||[],refunds:d.refunds||[],badgeLedgers:d.badgeLedgers||{},downloadEvents:d.downloadEvents||[],serviceRefunds:d.serviceRefunds||[],sellerFinanceLedger:d.sellerFinanceLedger||[]})
+ const d=JSON.parse(raw); return Object.assign(structuredClone(seed),d,{users:d.users||[],sellers:d.sellers||{},products:d.products||[],orders:d.orders||[],reviews:d.reviews||{},follows:d.follows||{},payouts:d.payouts||[],ads:d.ads||[],referrals:d.referrals||[],subscriptions:d.subscriptions||[],warnings:d.warnings||[],devices:d.devices||[],deletedProducts:d.deletedProducts||[],cart:d.cart||[],library:d.library||[],saved:d.saved||[],settings:Object.assign({currency:"INR",referralUsedBy:{},websiteUpi:"saleearn.demo@upi"},d.settings||{}),balancePayments:d.balancePayments||[],referralUpgrades:d.referralUpgrades||[],drafts:d.drafts||[],productActivity:d.productActivity||[],adminAuditLog:d.adminAuditLog||[],adminControls:Object.assign({marketplaceFreeze:false,newSellerRegistration:false,productUploads:false,withdrawals:false,payments:false,ads:false,referrals:false},d.adminControls||{}),riskAlerts:d.riskAlerts||[],coupons:d.coupons||[],couponRedemptions:d.couponRedemptions||[],storeThemes:d.storeThemes||{},securityEvents:d.securityEvents||[],sellerRankings:d.sellerRankings||[],growthGoals:d.growthGoals||{},platformConfig:d.platformConfig||{},notifications:d.notifications||[],messages:d.messages||[],mailMessages:d.mailMessages||[],disputes:d.disputes||[],refunds:d.refunds||[],badgeLedgers:d.badgeLedgers||{},downloadEvents:d.downloadEvents||[],serviceRefunds:d.serviceRefunds||[],sellerFinanceLedger:d.sellerFinanceLedger||[]})
  }catch(e){return structuredClone(seed)}
 }
 let S=load();
@@ -2035,7 +2035,7 @@ let ONLINE_READY=false,ONLINE_LOADING=false,ONLINE_SYNC_TIMER=null,ONLINE_CHANNE
 const SE_SYNC_CONFIG=Object.freeze({pollMs:15000,debounceMs:1200,maxWaitMs:5000,focusThrottleMs:10000,maxRetryMs:15000,maxRetries:5});
 let seBase=null,seVersion=null,seExists=false,seSyncKey='',seWriteBusy=false,seReadBusy=false,seDirtySince=0,seFailures=0,seRetryAt=0,seLastCheck=0,seStopped=false,seMutation=0,seStorageWarned=false;
 const seCounters={fullReads:0,versionReads:0,writes:0,skippedWrites:0,conflicts:0};
-function onlineSnapshot(){return {users:S.users||[],sellers:S.sellers||{},products:S.products||[],orders:S.orders||[],reviews:S.reviews||{},follows:S.follows||{},payouts:S.payouts||[],ads:S.ads||[],referrals:S.referrals||[],subscriptions:S.subscriptions||[],warnings:S.warnings||[],devices:S.devices||[],deletedProducts:S.deletedProducts||[],balancePayments:S.balancePayments||[],drafts:S.drafts||[],productActivity:S.productActivity||[],adminAuditLog:S.adminAuditLog||[],adminControls:S.adminControls||{},platformConfig:S.platformConfig||{},riskAlerts:S.riskAlerts||[],coupons:S.coupons||[],couponRedemptions:S.couponRedemptions||[],storeThemes:S.storeThemes||{},securityEvents:S.securityEvents||[],scoreHistory:S.scoreHistory||[],sellerRankings:S.sellerRankings||[],growthGoals:S.growthGoals||{},notifications:S.notifications||[],messages:S.messages||[],mailMessages:S.mailMessages||[],disputes:S.disputes||[],refunds:S.refunds||[],adminFinancialLedger:S.adminFinancialLedger||[],adminCommissionAdjustments:S.adminCommissionAdjustments||[],badgeLedgers:S.badgeLedgers||{},downloadEvents:S.downloadEvents||[],serviceRefunds:S.serviceRefunds||[],sellerFinanceLedger:S.sellerFinanceLedger||[]}}function onlineSnapshotKey(data){return JSON.stringify(data||{});}
+function onlineSnapshot(){return {users:S.users||[],sellers:S.sellers||{},products:S.products||[],orders:S.orders||[],reviews:S.reviews||{},follows:S.follows||{},payouts:S.payouts||[],ads:S.ads||[],referrals:S.referrals||[],subscriptions:S.subscriptions||[],warnings:S.warnings||[],devices:S.devices||[],deletedProducts:S.deletedProducts||[],balancePayments:S.balancePayments||[],referralUpgrades:S.referralUpgrades||[],drafts:S.drafts||[],productActivity:S.productActivity||[],adminAuditLog:S.adminAuditLog||[],adminControls:S.adminControls||{},platformConfig:S.platformConfig||{},riskAlerts:S.riskAlerts||[],coupons:S.coupons||[],couponRedemptions:S.couponRedemptions||[],storeThemes:S.storeThemes||{},securityEvents:S.securityEvents||[],scoreHistory:S.scoreHistory||[],sellerRankings:S.sellerRankings||[],growthGoals:S.growthGoals||{},notifications:S.notifications||[],messages:S.messages||[],mailMessages:S.mailMessages||[],disputes:S.disputes||[],refunds:S.refunds||[],adminFinancialLedger:S.adminFinancialLedger||[],adminCommissionAdjustments:S.adminCommissionAdjustments||[],badgeLedgers:S.badgeLedgers||{},downloadEvents:S.downloadEvents||[],serviceRefunds:S.serviceRefunds||[],sellerFinanceLedger:S.sellerFinanceLedger||[]}}function onlineSnapshotKey(data){return JSON.stringify(data||{});}
 function seClone(x){return x===undefined?undefined:structuredClone(x);}
 function sePersist(){try{localStorage.setItem(KEY,JSON.stringify(S));return true;}catch(e){if(!seStorageWarned){seStorageWarned=true;toast('Browser storage is full or unavailable. Cloud sync will be used; keep this tab open until sync completes.');}console.warn('Local save failed',e);return false;}}
 function seOnline(){return navigator.onLine!==false;}
@@ -2367,7 +2367,7 @@ function productCard(p){
   ${thumb(p)}
   <button class="plus" onclick="event.stopPropagation();addCart('${p.id}')">+</button>
   <button class="save-product ${saved?'saved':''}" title="${saved?'Remove from Saved':'Save product'}" onclick="event.stopPropagation();toggleSaved('${p.id}')">${saved?'♥':'♡'}</button>
-  <div class="body"><div>${(p.tags||[]).slice(0,2).map(t=>`<span class="tag">${esc(t)}</span>`).join("")}</div>
+  <div class="body"><div class="product-tags">${(p.tags||[]).slice(0,2).map(t=>`<span class="tag">${esc(t)}</span>`).join("")}</div>
    <h3>${esc(p.title)}</h3><div><span class="price">${money(p.price)}</span>${p.oldPrice?`<span class="old">${money(p.oldPrice)}</span>`:""}</div><div class="seller-product-meta"><span class="seller-sales">Sales: ${productSales(p.id)}</span>${p.featured?`<span class="featured-badge">★ Featured</span>`:""}</div>
    <div class="seller-line" onclick="event.stopPropagation();go('seller/${p.sellerId}')">${avatar(s)}<span>${esc(s.name)}</span></div>
    <div style="display:flex;gap:8px;margin-top:10px"><button class="btn ${purchased?'primary':''}" style="flex:1;padding:9px" onclick="event.stopPropagation();${purchased?`openPurchasedByProduct('${p.id}')`:`buyNow('${p.id}')`}">${purchased?'Check':'Buy'}</button></div>
@@ -3366,7 +3366,7 @@ async function completeReferralUpgradeOnline(){
    onVerified:async(response)=>{
      const verified={...x,gatewayPaymentId:response.razorpay_payment_id,razorpayOrderId:response.razorpay_order_id,paymentVerified:true};
      window.refUpgrade=null;
-     applyReferralUpgradePayment(verified,"RAZORPAY_TEST");
+     window.applyReferralUpgradePayment(verified,"RAZORPAY_TEST");
      toast("Referral upgrade test payment verified.");
    }
  });
@@ -5716,4 +5716,33 @@ applyAppearanceTexture();
 })();
 </script>
 
+<script data-saleearn-referral-online-activation="v1">
+(function(){
+  'use strict';
+  window.applyReferralUpgradePayment=function(x,source){
+    if(!x||x.paymentVerified!==true)return false;
+    const s=currentSeller(),sid=String(s?.id||'');
+    if(!s||!sid)return false;
+    const target=Number(x.rate),amount=Number(x.price||0),current=referralRate(s),gatewayId=String(x.gatewayPaymentId||'');
+    if(!Number.isFinite(target)||target<6||target>20||!Number.isFinite(amount)||amount<=0){toast('Referral payment details are invalid');return false}
+    S.referralUpgrades=Array.isArray(S.referralUpgrades)?S.referralUpgrades:[];
+    const existing=gatewayId&&S.referralUpgrades.find(r=>String(r.gatewayPaymentId||'')===gatewayId&&String(r.sellerId||'')===sid&&r.paymentStatus==='SUCCESS');
+    if(existing){
+      if(referralRate(s)<Number(existing.toRate))s.referralPercent=Number(existing.toRate);
+      save();clearInterval(window.paymentTimer);showReferralUpgradeSuccess(Number(existing.toRate),Number(existing.amount||amount),existing.paymentSource||source,Number(existing.fromRate||target-1));return true;
+    }
+    if(target<=current){if(target===current){toast('Referral rate is already active');return true}toast('Referral level changed. Payment was not applied.');return false}
+    if(target!==current+1){toast('Only the next referral level can be activated');return false}
+    const fromRate=current,refId=String(x.id||uid('ru'));
+    S.referralUpgrades.unshift({id:refId,sellerId:sid,fromRate,toRate:target,amount,paymentSource:source||'RAZORPAY_TEST',paymentStatus:'SUCCESS',paymentVerified:true,gatewayPaymentId:x.gatewayPaymentId||null,razorpayOrderId:x.razorpayOrderId||null,date:nowISO(),levels:[target]});
+    s.referralPercent=target;save();clearInterval(window.paymentTimer);showReferralUpgradeSuccess(target,amount,source||'RAZORPAY_TEST',fromRate);return true;
+  };
+})();
+</script>
+
+
+<style data-saleearn-product-tags-one-line="v1">
+.product-card .product-tags{display:flex;align-items:center;gap:6px;flex-wrap:nowrap;min-width:0;width:100%;height:30px;overflow:hidden;white-space:nowrap}
+.product-card .product-tags .tag{display:inline-flex;flex:0 1 auto;min-width:0;max-width:48%;margin:0;padding:6px 9px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+</style>
 </html>
