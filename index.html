@@ -2020,22 +2020,71 @@ function ensurePlatformConfig(){
  return S.platformConfig;
 }
 ensurePlatformConfig();
-const DEMO_RESET_VERSION="saleearn_clean_start_v3";
-/* One-time clean start: keep only locally known admin accounts; remove old demo/user/business data.
-   Server-side auth users are removed separately by the supplied Supabase reset SQL. */
+const DEMO_RESET_VERSION="saleearn_clean_start_v4_keep_products";
+/* One-time clean reset: keep all products and account/store records, but clear
+   money, sales, payouts, subscriptions/plans, ads and other transactional/admin activity. */
+function resetOperationalDataKeepProducts(){
+ try{
+  // Products stay exactly in place, but their displayed legacy sales counters are reset.
+  (S.products||[]).forEach(p=>{if(p&&Object.prototype.hasOwnProperty.call(p,"sales"))p.sales=0});
+  S.orders=[];
+  S.payouts=[];
+  S.ads=[];
+  S.referrals=[];
+  S.subscriptions=[];
+  S.balancePayments=[];
+  S.referralUpgrades=[];
+  S.productActivity=[];
+  S.adminAuditLog=[];
+  S.adminFinancialLedger=[];
+  S.adminCommissionAdjustments=[];
+  S.sellerFinanceLedger=[];
+  S.scoreHistory=[];
+  S.reviews={};
+  S.follows={};
+  S.warnings=[];
+  S.devices=[];
+  S.deletedProducts=[];
+  S.cart=[];
+  S.library=[];
+  S.saved=[];
+  S.draft=null;
+  S.drafts=[];
+  S.riskAlerts=[];
+  S.coupons=[];
+  S.couponRedemptions=[];
+  S.storeThemes={};
+  S.securityEvents=[];
+  S.sellerRankings=[];
+  S.growthGoals={};
+  S.notifications=[];
+  S.messages=[];
+  S.mailMessages=[];
+  S.disputes=[];
+  S.refunds=[];
+  S.badgeLedgers={};
+  S.downloadEvents=[];
+  S.serviceRefunds=[];
+  // Keep user/store accounts, but return subscription/referral state to a clean start.
+  Object.values(S.sellers||{}).forEach(ss=>{
+   if(!ss||typeof ss!=="object")return;
+   ss.plan="FREE";
+   ss.referralPercent=5;
+   delete ss.lastSubscription;
+  });
+  (S.users||[]).forEach(u=>{if(u&&u.lastSubscription)delete u.lastSubscription});
+  return true;
+ }catch(e){console.warn("Operational reset failed",e);return false}
+}
 try{
  const resetSeen=localStorage.getItem("SE_DEMO_RESET_VERSION");
  if(resetSeen!==DEMO_RESET_VERSION){
-  const admins=(S.users||[]).filter(u=>u&&((u.isAdmin===true)||String(u.role||"").toLowerCase()==="admin"));
-  S.users=admins; S.sellers={}; S.products=[]; S.orders=[]; S.reviews={}; S.follows={}; S.payouts=[]; S.ads=[]; S.referrals=[];
-  S.subscriptions=[]; S.warnings=[]; S.devices=[]; S.deletedProducts=[]; S.cart=[]; S.library=[]; S.saved=[]; S.draft=null; S.balancePayments=[]; S.drafts=[];
-  S.productActivity=[]; S.adminAuditLog=[]; S.riskAlerts=[]; S.coupons=[]; S.couponRedemptions=[]; S.storeThemes={}; S.securityEvents=[]; S.sellerRankings=[]; S.growthGoals={};
-  S.notifications=[]; S.messages=[]; S.mailMessages=[]; S.disputes=[]; S.refunds=[]; S.adminControls={marketplaceFreeze:false,newSellerRegistration:false,productUploads:false,withdrawals:false,payments:false,ads:false,referrals:false};
-  S.currentUser=admins[0]||null;
-  localStorage.setItem("SE_DEMO_RESET_VERSION",DEMO_RESET_VERSION);
+  resetOperationalDataKeepProducts();
+  // Mark as local-only until the same clean state is written to the shared cloud state.
+  localStorage.setItem("SE_DEMO_RESET_VERSION",DEMO_RESET_VERSION+"_LOCAL");
   sePersist?.();
  }
-}catch(e){console.warn("Clean-start migration failed",e)}
+}catch(e){console.warn("Clean reset migration failed",e)}
 S.users.forEach(u=>{if(u.unpublicUntil&&u.unpublicUntil<=Date.now()){u.unpublicUntil=0;u.suspendedUntil=0}});
 Object.values(S.sellers).forEach(ss=>{if(!ss.referralCode)ss.referralCode=(ss.owner||"SE").replace(/\W/g,"").slice(0,4).toUpperCase()+"-"+ss.id.slice(-4).toUpperCase()});
 /* Sale Earn LOW-LOAD SYNC v1 — original public marketplace/test payments retained.
@@ -2161,7 +2210,20 @@ async function restoreOnlineState(){
  try{
   const row=await seReadFull();seSetBase(row);
   if(row?.data)seInstall(row.data);
+  // The cloud state can contain the old transactional data, so apply the same
+  // one-time reset after the remote snapshot is installed, while preserving products.
+  const resetSeen=localStorage.getItem("SE_DEMO_RESET_VERSION");
+  if(resetSeen!==DEMO_RESET_VERSION && resetSeen!==DEMO_RESET_VERSION+"_LOCAL"){
+   resetOperationalDataKeepProducts();
+   localStorage.setItem("SE_DEMO_RESET_VERSION",DEMO_RESET_VERSION+"_LOCAL");
+   sePersist();
+  }else if(resetSeen===DEMO_RESET_VERSION+"_LOCAL"){
+   resetOperationalDataKeepProducts();
+   localStorage.setItem("SE_DEMO_RESET_VERSION",DEMO_RESET_VERSION);
+   sePersist();
+  }
   seSyncKey=onlineSnapshotKey(seBase||{});ONLINE_READY=true;
+  ONLINE_LOCAL_DIRTY=true;
   ONLINE_LOCAL_DIRTY=!row||onlineSnapshotKey(onlineSnapshot())!==seSyncKey;
   if(ONLINE_LOCAL_DIRTY){seDirtySince=Date.now();setTimeout(queueOnlineSync,0);}
   seSucceeded();startInstantOnlineSync();return true;
@@ -2468,10 +2530,10 @@ function openBuy(id){
  <div class="modal-footer"><button class="btn" onclick="closeModal()">Back</button><button class="btn primary" onclick="continuePayment('${id}')">Continue to Payment →</button></div></div></div>`
 }
 function continuePayment(id){
- if(window.pendingBuy?.guest){const n=(window.pendingBuy.name||document.getElementById("buyName")?.value||"").trim(),e=(window.pendingBuy.email||document.getElementById("buyEmail")?.value||"").trim().toLowerCase();if(!n||!e){toast("Name and email are required");return}window.pendingBuy={...window.pendingBuy,id,name:n,email:e,userId:guestBuyerId(e),guest:true};testPay();return}
+ if(window.pendingBuy?.guest){const n=(window.pendingBuy.name||document.getElementById("buyName")?.value||"").trim(),e=(window.pendingBuy.email||document.getElementById("buyEmail")?.value||"").trim().toLowerCase();if(!n||!e){toast("Name and email are required");return}window.pendingBuy={...window.pendingBuy,id,name:n,email:e,userId:guestBuyerId(e),guest:true};openPayment();return}
  const n=S.currentUser?.name?.trim(),e=S.currentUser?.email?.trim();
  if(!n||!e){toast("Verified account details are required");return}
- window.pendingBuy={id,name:n,email:e,userId:S.currentUser.id};testPay()
+ window.pendingBuy={id,name:n,email:e,userId:S.currentUser.id};openPayment()
 }
 function openPayment(){
  const p=product(window.pendingBuy.id);const amount=Number(window.pendingBuy.amount??p.price);window.payMethod="UPI";window.paymentDeadline=Date.now()+Number(ensurePlatformConfig().payment?.timeoutMinutes||10)*60*1000;clearInterval(window.paymentTimer);
@@ -2628,8 +2690,9 @@ function servicePaymentPanel(kind,amount,meta={}){
  const label=kind==="subscription"?"Subscription":kind==="ad"?"Ad / Boost":"Payment";
  window.pendingService={kind,amount:Number(amount||0),meta};
  const available=sellerAvailableBalance(currentSeller().id);
- document.getElementById("modalRoot").innerHTML=`<div class="modal-bg"><div class="modal payment-service-modal"><button class="btn iconbtn close" onclick="closeModal()">×</button><h2>${label} Payment</h2><div class="dash-card"><div class="small muted">Amount</div><h2>${money(amount)}</h2>${window.pendingService?.discount?`<div class="small muted">Coupon discount: -${money(window.pendingService.discount)}</div>`:""}<div class="small muted">Choose how you want to pay.</div></div><div class="field"><label>Coupon Code (optional)</label><div style="display:flex;gap:8px"><input id="serviceCoupon" placeholder="Enter coupon" value="${esc(window.pendingService?.couponCode||'')}"><button class="btn" onclick="applyServiceCoupon()">Apply</button></div><div class="small muted">Admin coupons may apply to this ${label.toLowerCase()}.</div></div><div class="service-pay-options"><button class="btn primary" onclick="servicePayOnline()">Pay Online</button><button class="btn" onclick="servicePayBalance()">Pay from Available Balance</button></div><div class="modal-footer" style="margin-top:14px"><button class="btn" onclick="${kind==='ad'?'openAdCampaign()':'closeModal()'}">Back</button></div><p class="small muted">Online gateway uses Razorpay Test Mode. A subscription/Ad will activate only after a verified gateway payment. Balance payments deduct from To Receive immediately after successful confirmation.</p></div></div>`
+ document.getElementById("modalRoot").innerHTML=`<div class="modal-bg"><div class="modal payment-service-modal"><div style="display:flex;align-items:center;gap:10px;margin-bottom:14px"><button class="btn" onclick="servicePaymentBack()">← Back</button><h2 style="margin:0">${label} Payment</h2></div><button class="btn iconbtn close" onclick="closeModal()">×</button><div class="dash-card"><div class="small muted">Amount</div><h2>${money(amount)}</h2>${window.pendingService?.discount?`<div class="small muted">Coupon discount: -${money(window.pendingService.discount)}</div>`:""}<div class="small muted">Choose how you want to pay.</div></div><div class="field"><label>Coupon Code (optional)</label><div style="display:flex;gap:8px"><input id="serviceCoupon" placeholder="Enter coupon" value="${esc(window.pendingService?.couponCode||'')}"><button class="btn" onclick="applyServiceCoupon()">Apply</button></div><div class="small muted">Admin coupons may apply to this ${label.toLowerCase()}.</div></div><div class="service-pay-options"><button class="btn primary" onclick="servicePayOnline()">Pay Online</button><button class="btn" onclick="servicePayBalance()">Pay from Available Balance</button></div><p class="small muted">Online gateway uses Razorpay Test Mode. A subscription/Ad will activate only after a verified gateway payment. Balance payments deduct from To Receive immediately after successful confirmation.</p></div></div>`
 }
+function servicePaymentBack(){const x=window.pendingService;if(x?.kind==='ad'){const m=x.meta||{};window.pendingAdDraft={...(window.pendingAdDraft||{}),productId:m.productId||window.pendingAdDraft?.productId||"",type:m.type||window.pendingAdDraft?.type||"",days:m.days||window.pendingAdDraft?.days||7,search:m.search??window.pendingAdDraft?.search??""};openAdCampaign(window.pendingAdDraft);return}closeModal()}
 function applyServiceCoupon(){const x=window.pendingService;if(!x)return;const code=(document.getElementById('serviceCoupon')?.value||'').trim().toUpperCase();const context=x.kind==='subscription'?'SUBSCRIPTION':x.kind==='ad'?'ADS':'PRODUCT';const userId=S.currentUser?.id||currentSeller()?.id||'guest';let c=validCoupon(code,null,userId,context);if(c&&context==='ADS'&&c.placement&&x.meta?.type&&!String(x.meta.type).toLowerCase().includes(String(c.placement).toLowerCase()))c=null;if(!c){toast('Invalid, expired, exhausted or not applicable here');return}const base=Number(x.meta?.baseAmount??x.amount);const d=couponDiscount(c,base);window.pendingService={...x,couponId:c.id,couponCode:c.code,discount:d,baseAmount:base,amount:Math.max(0,base-d),meta:{...(x.meta||{}),discount:d,baseAmount:base}};toast('Coupon applied');servicePaymentPanel(window.pendingService.kind,window.pendingService.amount,window.pendingService.meta)}
 
 async function servicePayOnline(){
@@ -3129,7 +3192,7 @@ function disableCoupon(id){if(!adminOnly())return;const c=S.coupons.find(x=>x.id
 function disableProductCoupon(productId){if(!adminOnly())return;const p=product(productId);if(!p?.coupon)return;p.coupon.active=false;adminAudit('Disabled seller product coupon',productId,{sellerId:p.sellerId,code:p.coupon.code});save();render()}
 function validCoupon(code,productId,userId,context='PRODUCT'){const c=(S.coupons||[]).find(x=>x.code===String(code||'').trim().toUpperCase()&&x.active!==false);if(!c)return null;if(c.expiresAt&&Date.now()>new Date(c.expiresAt).getTime())return null;if(Number(c.used||0)>=Number(c.maxUses||Infinity))return null;if(c.scope&&c.scope!==context)return null;if(context==='PRODUCT'){if(c.productId&&c.productId!==productId)return null;if(c.sellerId&&c.sellerId!==product(productId)?.sellerId)return null;if((S.couponRedemptions||[]).some(x=>x.couponId===c.id&&x.userId===userId&&x.productId===productId))return null}return c}
 function couponDiscount(c,price){if(!c)return 0;return Math.min(price,c.type==='percent'?price*Number(c.value||0)/100:Number(c.value||0))}
-function applyCheckoutCoupon(){const p=product(window.pendingBuy?.id);if(!p)return;const code=(document.getElementById('buyCoupon')?.value||'').trim().toUpperCase();const userId=window.pendingBuy?.userId||S.currentUser?.id||'guest';let c=validCoupon(code,p.id,userId,'PRODUCT');if(!c&&p.coupon&&p.coupon.code===code&&p.coupon.active!==false&&(!p.coupon.expiresAt||Date.now()<=new Date(p.coupon.expiresAt).getTime())&&Number(p.coupon.used||0)<Number(p.coupon.maxUses||Infinity))c=p.coupon;if(!c){toast('Invalid, expired, exhausted or not applicable to this product');return}const d=couponDiscount(c,p.price);window.pendingBuy={...window.pendingBuy,couponId:c.id,couponCode:c.code,discount:d,amount:Math.max(0,p.price-d)};toast('Coupon applied');openBuy(p.id)}
+function applyCheckoutCoupon(){const p=product(window.pendingBuy?.id);if(!p)return;const code=(document.getElementById('buyCoupon')?.value||'').trim().toUpperCase();const userId=window.pendingBuy?.userId||S.currentUser?.id||'guest';let c=validCoupon(code,p.id,userId,'PRODUCT');if(!c&&p.coupon&&p.coupon.code===code&&p.coupon.active!==false&&(!p.coupon.expiresAt||Date.now()<=new Date(p.coupon.expiresAt).getTime())&&Number(p.coupon.used||0)<Number(p.coupon.maxUses||Infinity))c=p.coupon;if(!c){toast('Invalid, expired, exhausted or not applicable to this product');return}const d=couponDiscount(c,p.price);window.pendingBuy={...window.pendingBuy,couponId:c.id,couponCode:c.code,discount:d,amount:Math.max(0,p.price-d)};toast('Coupon applied');openPayment()}
 function storeTheme(sid){return S.storeThemes?.[sid]||{tagline:'',banner:'',accent:'',layout:'grid',showBio:true}}
 function readStoreImage(file,maxBytes,label,cb){if(!file)return;if(!file.type||!file.type.startsWith('image/')){toast(label+' must be an image');return}if(file.size>maxBytes){toast(label+' must be '+(maxBytes/(1024*1024)).toFixed(0)+' MB or smaller');return}const r=new FileReader();r.onload=()=>cb(String(r.result||''));r.onerror=()=>toast('Could not read '+label.toLowerCase());r.readAsDataURL(file)}
 function previewStoreLogo(e){const f=e.target.files?.[0];readStoreImage(f,2*1024*1024,'Logo Image',data=>{const s=currentSeller();if(!s)return;s.logo=data;save();const box=document.getElementById('storeLogoPreview');if(box)box.innerHTML='<img src="'+esc(data)+'" alt="Store logo">';toast('Logo saved');})}
@@ -3293,7 +3356,7 @@ function dashSubscription(){
  const cfgPlans=(ensurePlatformConfig().plans||[]).slice(0,3);const plans=cfgPlans.filter(p=>p.active!==false&&!p.archived).map(p=>[p.id,p.name,p.monthly,Number(p.commissionPct||0)/100,(Array.isArray(p.featureText)&&p.featureText.length?p.featureText:[`Upload limit: ${p.uploadLimit}`,`Storage limit: ${p.storageLimit} MB`,p.prioritySupport?"Priority support":"Standard support"])])
  return dashShell("subscription",`<div class="plans">${plans.map(p=>`<div class="plan ${s.plan===p[0]?"current":""}"><h2>${p[1]}</h2><div class="plan-price">${money(p[2])}${p[0]!=="FREE"?" / month":""}</div><div style="text-align:center" class="pill">${Math.round(p[3]*100)}% Platform Fee</div><ul>${p[4].map(x=>`<li>${x}</li>`).join("")}</ul><button class="btn ${s.plan===p[0]?"":"primary"}" style="width:100%;margin-top:25px" onclick="${s.plan===p[0]?"toast('This plan is already active')":"buySubscription('"+p[0]+"')"}">${s.plan===p[0]?"Current Active Plan":"Purchase Plan"}</button></div>`).join("")}</div>
  <div class="dash-card"><h3>Referral Code</h3><p class="muted">Apply a referral code once. A valid referral gives 10% off the subscription; the referrer receives 5% of the final paid amount.</p><div style="display:flex;gap:8px"><input id="refCode" style="flex:1;border:1px solid var(--line);border-radius:11px;padding:11px" placeholder="ENTER CODE"><button class="btn" onclick="applyReferral()">Apply</button></div></div>
- <div class="dash-card" style="padding:0;overflow:hidden"><h3 style="padding:18px;margin:0">Subscription Pay History</h3><table class="dash-table"><thead><tr><th>Plan</th><th>Amount</th><th>Discount</th><th>Payment</th><th>Date</th><th>Status</th></tr></thead><tbody>${history.map(x=>{const end=subscriptionEndDate(x);const active=end&&Date.now()<end.getTime();return `<tr><td>${esc(x.plan)}</td><td>${money(x.amount)}</td><td>${money(x.discount||0)}</td><td>${esc(x.paymentSource||"ONLINE")}</td><td>${new Date(x.date).toLocaleString('en-IN')}</td><td><span class="status ${String(x.status||"").toUpperCase()==="CANCELLED"?"cancelled":active?"success":"cancelled"}">${String(x.status||"").toUpperCase()==="CANCELLED"?"CANCELLED":active?"ACTIVE":"EXPIRED"}</span></td></tr>`}).join("")||`<tr><td colspan="6" style="text-align:center;padding:30px">No subscription payment history yet.</td></tr>`}</tbody></table></div>`)
+ <div class="dash-card" style="padding:0;overflow:hidden"><h3 style="padding:18px;margin:0">Subscription Pay History</h3><table class="dash-table"><thead><tr><th>Plan</th><th>Amount</th><th>Discount</th><th>Payment</th><th>Date</th><th>Status</th></tr></thead><tbody>${history.map(x=>{const end=subscriptionEndDate(x);const active=end&&Date.now()<end.getTime();return `<tr><td>${esc(x.plan)}</td><td>${money(x.amount)}</td><td>${money(x.discount||0)}</td><td>${esc(x.paymentSource||"ONLINE")}</td><td>${new Date(x.date).toLocaleString('en-IN')}</td><td><span class="status ${active?"success":"cancelled"}">${active?"ACTIVE":"EXPIRED"}</span></td></tr>`}).join("")||`<tr><td colspan="6" style="text-align:center;padding:30px">No subscription payment history yet.</td></tr>`}</tbody></table></div>`)
 }
 function buySubscription(plan){
  if(!systemGuard("subscriptions","Subscriptions are temporarily disabled by Admin"))return;
@@ -3309,17 +3372,33 @@ function dashAds(){
  return dashShell("ads",`<button class="btn primary" onclick="openAdCampaign()">＋ NEW AD CAMPAIGN</button><h3 style="margin-top:25px">ACTIVE CAMPAIGNS</h3><table class="dash-table"><thead><tr><th>Product</th><th>Placement</th><th>Clicks</th><th>End Date</th><th>Status</th></tr></thead><tbody>${activeAds().filter(a=>a.sellerId===sid).map(a=>`<tr><td>${esc(product(a.productId)?.title||"—")}</td><td>${esc(a.placement)}</td><td>${a.clicks||0}</td><td>${new Date(a.endDate).toLocaleDateString()}</td><td><span class="status success">ACTIVE</span></td></tr>`).join("")||`<tr><td colspan="5">NO ACTIVE CAMPAIGNS RUNNING</td></tr>`}</tbody></table>
  <h3 style="margin-top:25px">AD PAYMENT HISTORY</h3><table class="dash-table"><thead><tr><th>Product</th><th>Dates</th><th>Placement</th><th>Cost</th><th>Payment</th></tr></thead><tbody>${ads.map(a=>`<tr><td>${esc(product(a.productId)?.title||"—")}</td><td>${new Date(a.startDate).toLocaleDateString()} → ${new Date(a.endDate).toLocaleDateString()}</td><td>${esc(a.placement)}</td><td>${money(a.cost||0)}</td><td>${esc(a.paymentSource||"ONLINE")}</td></tr>`).join("")||`<tr><td colspan="5">NO AD PAYMENT HISTORY</td></tr>`}</tbody></table>`)
 }
-function openAdCampaign(){
+function openAdCampaign(state={}){
  const ps=S.products.filter(p=>p.sellerId===currentSeller().id);
- document.getElementById("modalRoot").innerHTML=`<div class="modal-bg" onclick="if(event.target===this)closeModal()"><div class="modal"><button class="btn iconbtn close" onclick="closeModal()">×</button><h2>New Ad</h2><div class="field"><label>Search Product</label><input id="adSearch" placeholder="Type product name" oninput="filterAdProducts()"></div><div class="field"><label>Select Product</label><select id="adProduct">${ps.map(p=>`<option value="${p.id}">${esc(p.title)}</option>`).join("")}</select></div><div class="field"><label>Ad Type</label><select id="adType" onchange="updateAdTotal()">${(ensurePlatformConfig().ads?.packages||[]).filter(x=>x.active!==false).map(x=>`<option value="${esc(x.name)}" data-price="${Number(x.price||0)}">${esc(x.name)} · ${money(Number(x.price||0))}/day</option>`).join("")}</select></div><div class="field"><label>Duration (days)</label><input id="adDays" type="number" min="1" value="7" oninput="updateAdTotal()"></div><div class="dash-card" style="margin:10px 0"><b>Total Ad Cost: <span id="adTotal">₹35.00</span></b><div class="small muted">Choose Pay Online or Pay from Available Balance at checkout.</div></div><div class="modal-footer"><button class="btn" onclick="closeModal()">Cancel</button><button class="btn primary" onclick="createAd()">Continue to Payment</button></div></div></div>`
+ const draft=window.pendingAdDraft||{};
+ const selectedProduct=state.productId||draft.productId||ps[0]?.id||"";
+ const selectedType=state.type||draft.type||"";
+ const selectedDays=Math.max(1,Number(state.days??draft.days)||7);
+ const selectedSearch=state.search??draft.search??"";
+ const packages=(ensurePlatformConfig().ads?.packages||[]).filter(x=>x.active!==false);
+ document.getElementById("modalRoot").innerHTML=`<div class="modal-bg" onclick="if(event.target===this)closeModal()"><div class="modal"><button class="btn iconbtn close" onclick="closeModal()">×</button><h2>New Ad</h2><div class="field"><label>Search Product</label><input id="adSearch" placeholder="Type product name" oninput="filterAdProducts();saveAdDraft()" value="${esc(selectedSearch)}"></div><div class="field"><label>Select Product</label><select id="adProduct" onchange="saveAdDraft();updateAdTotal()">${ps.map(p=>`<option value="${p.id}" ${p.id===selectedProduct?'selected':''}>${esc(p.title)}</option>`).join("")}</select></div><div class="field"><label>Ad Type</label><select id="adType" onchange="saveAdDraft();updateAdTotal()">${packages.map(x=>`<option value="${esc(x.name)}" data-price="${Number(x.price||0)}" ${x.name===selectedType?'selected':''}>${esc(x.name)} · ${money(Number(x.price||0))}/day</option>`).join("")}</select></div><div class="field"><label>Duration (days)</label><input id="adDays" type="number" min="1" value="${selectedDays}" oninput="saveAdDraft();updateAdTotal()"></div><div class="dash-card" style="margin:10px 0"><b>Total Ad Cost: <span id="adTotal">₹0.00</span></b><div class="small muted">Choose Pay Online or Pay from Available Balance at checkout.</div></div><div class="modal-footer"><button class="btn" onclick="closeModal()">Cancel</button><button class="btn primary" onclick="createAd()">Continue to Payment</button></div></div></div>`;
+ saveAdDraft();
+ updateAdTotal();
 }
-function filterAdProducts(){const q=document.getElementById("adSearch").value.toLowerCase();document.querySelectorAll("#adProduct option").forEach(o=>o.hidden=!o.textContent.toLowerCase().includes(q))}
-function updateAdTotal(){const sel=document.getElementById("adType"),price=Number(sel.selectedOptions[0].dataset.price||0),days=Math.max(1,Number(document.getElementById("adDays").value)||1);document.getElementById("adTotal").textContent=money(price*days)}
+function saveAdDraft(){
+ const productId=document.getElementById("adProduct")?.value||"";
+ const type=document.getElementById("adType")?.value||"";
+ const days=Math.max(1,Number(document.getElementById("adDays")?.value)||1);
+ const search=document.getElementById("adSearch")?.value||"";
+ window.pendingAdDraft={productId,type,days,search};
+}
+function filterAdProducts(){const q=(document.getElementById("adSearch")?.value||"").toLowerCase();document.querySelectorAll("#adProduct option").forEach(o=>o.hidden=!o.textContent.toLowerCase().includes(q));}
+function updateAdTotal(){const sel=document.getElementById("adType");if(!sel||!sel.selectedOptions[0])return;const price=Number(sel.selectedOptions[0].dataset.price||0),days=Math.max(1,Number(document.getElementById("adDays")?.value)||1);const total=document.getElementById("adTotal");if(total)total.textContent=money(price*days)}
 function createAd(){
  if(!systemGuard('ads','Advertising is temporarily disabled by Admin'))return;
+ saveAdDraft();
  const sid=currentSeller().id,sel=document.getElementById("adType"),type=sel.value,rate=Number(sel.selectedOptions[0].dataset.price||0),days=Math.max(1,Number(document.getElementById("adDays").value)||1),cost=rate*days,productId=document.getElementById("adProduct").value;
  if(!productId){toast("Select a product");return}
- servicePaymentPanel("ad",cost,{productId,type,rate,days});
+ servicePaymentPanel("ad",cost,{productId,type,rate,days,search:document.getElementById("adSearch")?.value||""});
 }
 function dashFollowers(){
  const sid=currentSeller().id;
@@ -5179,8 +5258,22 @@ function markThreadRead(t,role){threadMessages(t.id).forEach(m=>{if(m.senderRole
 function bubble(m,role){const mine=m.senderRole===role;return `<div class="message-bubble ${mine?'mine':''}">${esc(m.body)}<small>${new Date(m.date).toLocaleString('en-IN',{hour:'2-digit',minute:'2-digit'})} ${mine?`<span class="message-ticks ${m.readAt?'read':''}">${m.readAt?'✓✓':'✓'}</span>`:''}</small></div>`}
 window.sendSellerChat=function(){const s=currentSeller(),u=S.currentUser;if(!s||!u)return;v21Init();if(S.messageSettings.enabled===false)return toast('Messages are paused by Admin');const t=threadForSeller(s.id);if(t.blocked)return toast('This chat is blocked by Admin');const body=(document.getElementById('sellerChatBody')?.value||'').trim();if(!body)return;if(body.length>2000)return toast('Message maximum 2000 characters');const q=dailyAllowance(s.id);if(!q.left)return toast('Daily limit reached. Add 20 messages for ₹10.');S.messages.push({id:uid('msg'),threadId:t.id,sellerId:s.id,userId:u.id,senderRole:'seller',body,date:nowISO(),readAt:null});t.updatedAt=nowISO();t.archived=false;save();render()};
 window.sendAdminChat=function(threadId){if(!adminOnly())return;const t=S.messageThreads.find(x=>x.id===threadId),body=(document.getElementById('adminChatBody')?.value||'').trim();if(!t||!body)return;if(body.length>2000)return toast('Message maximum 2000 characters');S.messages.push({id:uid('msg'),threadId:t.id,sellerId:t.sellerId,userId:t.userId,senderRole:'admin',body,date:nowISO(),readAt:null});t.updatedAt=nowISO();t.archived=false;save();render()};
-window.buyMessagePack=function(source){const s=currentSeller();if(!s)return;const cfg=S.messageSettings,count=S.messagePacks.filter(x=>x.sellerId===s.id&&x.day===todayKey()&&x.status==='SUCCESS').length;if(count>=Number(cfg.maxPacksPerDay||10))return toast('Daily message pack limit reached');const amount=Number(cfg.packPrice||10),messages=Number(cfg.packMessages||20);if(source==='BALANCE'){if(sellerAvailableBalance(s.id)<amount)return toast('Insufficient To Receive balance');S.balancePayments.unshift({id:uid('bal'),sellerId:s.id,amount,kind:'messagePack',source:'BALANCE',status:'SUCCESS',paymentVerified:true,date:nowISO()})}S.messagePacks.unshift({id:uid('mp'),sellerId:s.id,userId:S.currentUser?.id,day:todayKey(),amount,messages,source,status:'SUCCESS',paymentVerified:true,date:nowISO()});save();toast(messages+' extra messages added');render()};
-window.openMessagePack=function(){const c=S.messageSettings;document.getElementById('modalRoot').innerHTML=`<div class="modal-bg"><div class="modal"><button class="btn iconbtn close" onclick="closeModal()">×</button><h2>Add message limit</h2><p>Get <b>${c.packMessages} more messages today</b> for <b>${money(c.packPrice)}</b>.</p><div class="modal-footer"><button class="btn" onclick="buyMessagePack('RAZORPAY_TEST')">Pay Online with Razorpay</button><button class="btn primary" onclick="buyMessagePack('BALANCE');closeModal()">Pay from To Receive</button></div></div></div>`};
+window.buyMessagePack=async function(source){const s=currentSeller();if(!s)return;const cfg=S.messageSettings,count=S.messagePacks.filter(x=>x.sellerId===s.id&&x.day===todayKey()&&x.status==='SUCCESS').length;if(count>=Number(cfg.maxPacksPerDay||10))return toast('Daily message pack limit reached');const amount=Number(cfg.packPrice||10),messages=Number(cfg.packMessages||20);
+  if(source==='ONLINE_TEST'){
+    if(!systemGuard('payments','Payments are temporarily disabled by Admin'))return;
+    const refId=uid('msgpack');
+    document.getElementById('modalRoot').innerHTML=`<div class="modal-bg"><div class="modal" style="text-align:center;padding:34px"><div style="font-size:42px">💳</div><h2>Opening Razorpay</h2><p class="muted">Secure test checkout is loading...</p><div class="dash-card"><div>Amount: <b>${money(amount)}</b></div><div class="small muted">Extra messages are added only after verified payment.</div></div></div></div>`;
+    const ok=await startRazorpayCheckout({amount,description:'Sale Earn - Message Pack',customerName:S.currentUser?.name||s.name||'',customerEmail:S.currentUser?.email||'',metadata:{kind:'messagePack',referenceId:refId,sellerId:s.id,productId:''},onVerified:async(response)=>{
+      if((S.messagePacks||[]).some(x=>x.gatewayPaymentId===response.razorpay_payment_id&&x.status==='SUCCESS'))return;
+      S.messagePacks.unshift({id:uid('mp'),sellerId:s.id,userId:S.currentUser?.id,day:todayKey(),amount,messages,source:'RAZORPAY_TEST',status:'SUCCESS',paymentVerified:true,gatewayPaymentId:response.razorpay_payment_id,razorpayOrderId:response.razorpay_order_id,date:nowISO()});
+      S.balancePayments=S.balancePayments||[];S.balancePayments.unshift({id:uid('bal'),sellerId:s.id,amount,kind:'messagePack',source:'RAZORPAY_TEST',status:'SUCCESS',paymentVerified:true,gatewayPaymentId:response.razorpay_payment_id,date:nowISO()});
+      save();toast(messages+' extra messages added after successful payment');closeModal();render();
+    }});
+    if(!ok)closeModal();
+    return;
+  }
+  if(source==='BALANCE'){if(sellerAvailableBalance(s.id)<amount)return toast('Insufficient To Receive balance');S.balancePayments.unshift({id:uid('bal'),sellerId:s.id,amount,kind:'messagePack',source:'BALANCE',status:'SUCCESS',paymentVerified:true,date:nowISO()})}S.messagePacks.unshift({id:uid('mp'),sellerId:s.id,userId:S.currentUser?.id,day:todayKey(),amount,messages,source,status:'SUCCESS',paymentVerified:true,date:nowISO()});save();toast(messages+' extra messages added');render()};
+window.openMessagePack=function(){const c=S.messageSettings;document.getElementById('modalRoot').innerHTML=`<div class="modal-bg"><div class="modal"><button class="btn iconbtn close" onclick="closeModal()">×</button><h2>Add message limit</h2><p>Get <b>${c.packMessages} more messages today</b> for <b>${money(c.packPrice)}</b>.</p><div class="modal-footer"><button class="btn" onclick="buyMessagePack('ONLINE_TEST');closeModal()">Online test</button><button class="btn primary" onclick="buyMessagePack('BALANCE');closeModal()">Pay from To Receive</button></div></div></div>`};
 window.dashMessages=function(){const s=currentSeller(),u=S.currentUser;if(!s||!u)return dashShell('messages','<div class="dash-card">Sign in required.</div>');const t=threadForSeller(s.id);markThreadRead(t,'seller');const q=dailyAllowance(s.id),ms=threadMessages(t.id);return dashShell('messages',`<div class="message-shell"><aside class="message-list"><div class="message-list-head"><div><b>Messages</b><small class="muted">Admin support</small></div></div><button class="message-thread-row active"><span class="account-avatar">SE</span><span class="message-thread-main"><b>Sale Earn Admin</b><small>${esc(ms.at(-1)?.body||'Start a conversation')}</small></span></button><div class="dash-card"><b>${q.left} left today</b><div class="small muted">${q.used}/${q.base+q.packs} used</div><button class="btn" style="margin-top:9px" onclick="openMessagePack()">+${S.messageSettings.packMessages} for ${money(S.messageSettings.packPrice)}</button></div></aside><section class="message-chat"><div class="message-chat-head"><span class="account-avatar">SE</span><div><b>Sale Earn Admin</b><div class="small muted">Text messages only</div></div></div><div class="message-bubbles">${ms.map(m=>bubble(m,'seller')).join('')||'<div class="message-empty"><div><h2>Send your first message</h2><p class="muted">No images or videos—lightweight text chat only.</p></div></div>'}</div><div class="message-compose"><textarea id="sellerChatBody" maxlength="2000" placeholder="Write a message…" oninput="v21InputCount('sellerChatBody',2000)"></textarea><div class="message-compose-actions"><span class="message-limit" data-count-for="sellerChatBody">0/2000</span><button class="btn primary" onclick="sendSellerChat()" ${t.blocked||!q.left?'disabled':''}>Send</button></div></div></section></div>`)};
 window.selectAdminThread=function(id){window.v21AdminThread=id;render()};
 window.adminThreadAction=function(id,action){if(!adminOnly())return;const t=S.messageThreads.find(x=>x.id===id);if(!t)return;if(action==='block')t.blocked=!t.blocked;if(action==='archive')t.archived=!t.archived;adminAudit('Message thread '+action,id,{sellerId:t.sellerId,value:action==='block'?t.blocked:t.archived});save();render()};
@@ -6112,352 +6205,4 @@ html:root[data-theme="dark"] .ad-premium{background:linear-gradient(135deg,#0f19
   .seller-products.list-view .product-card .body{padding:9px!important}
 }
 </style>
-
-<!-- data-saleearn-subscription-cancellation="v1" -->
-<script id="saleearn-subscription-cancellation-v1">
-(function(){
-  'use strict';
-  const cancelledStates=new Set(['CANCELLED','CANCELED','REVOKED','FAILED','VOID']);
-  const upper=v=>String(v||'').trim().toUpperCase();
-  const planConfig=()=>{try{return ensurePlatformConfig()}catch{return S.platformConfig||{plans:[]}}};
-  const planById=id=>{const key=upper(id||'FREE');return (planConfig().plans||[]).find(x=>upper(x.id)===key)||{id:'FREE',name:'FREE',uploadLimit:10,ads:false,analytics:false,referrals:true,advanced:false,prioritySupport:false,verified:false,commissionPct:20}};
-  const validDate=v=>{const t=new Date(v||0).getTime();return Number.isFinite(t)?t:NaN};
-  const subscriptionEnd=x=>{const st=validDate(x?.startDate||x?.date),end=validDate(x?.endDate);return Number.isFinite(end)?end:(Number.isFinite(st)?st+SUBSCRIPTION_DURATION_MS:NaN)};
-  const subscriptionActive=(x,t)=>{
-    if(!x||cancelledStates.has(upper(x.status)))return false;
-    if(upper(x.paymentStatus||'SUCCESS')!=='SUCCESS'||x.paymentVerified===false)return false;
-    const started=validDate(x.startDate||x.date),ends=subscriptionEnd(x),cancelledAt=validDate(x.cancelledAt);
-    return Number.isFinite(started)&&started<=t&&Number.isFinite(ends)&&t<ends&&(!Number.isFinite(cancelledAt)||cancelledAt>t);
-  };
-  window.activeSubscriptionAt=function(sid,when){
-    const t=validDate(when)||Date.now();
-    return (S.subscriptions||[]).filter(x=>x.sellerId===sid&&subscriptionActive(x,t)).sort((a,b)=>validDate(b.startDate||b.date)-validDate(a.startDate||a.date))[0]||null;
-  };
-  window.sellerPlanNow=function(sid,when){
-    const sub=window.activeSubscriptionAt(sid,when||Date.now()),s=S.sellers?.[sid];
-    return upper(sub?.plan||s?.plan||'FREE')||'FREE';
-  };
-  window.sellerPlanConfig=function(sid,when){return planById(window.sellerPlanNow(sid,when))};
-  window.sellerPlanFeatureActive=function(sid,feature,when){
-    const p=window.sellerPlanConfig(sid,when);
-    return p[feature]!==false;
-  };
-  window.sellerProductLimit=function(sid,when){
-    const p=window.sellerPlanConfig(sid,when),global=Number(planConfig().rules?.productUploadLimit||1e9),limit=Number(p.uploadLimit);
-    return Math.max(0,Math.min(Number.isFinite(global)?global:1e9,Number.isFinite(limit)?limit:10));
-  };
-  window.subscriptionCancellationState=function(sid){
-    const s=S.sellers?.[sid];
-    return !!(s?.subscriptionStatus==='CANCELLED'||s?.subscriptionCancelledAt);
-  };
-
-  // Keep the seller's stored product list untouched when a plan is cancelled.
-  // Only future publishing/restoring is blocked by the current plan limit.
-  const priorPublish=window.publishProduct;
-  if(priorPublish)window.publishProduct=function(editId){
-    const seller=typeof currentSeller==='function'?currentSeller():null;
-    if(seller&&!editId){
-      const listed=(S.products||[]).filter(x=>x.sellerId===seller.id).length;
-      const limit=window.sellerProductLimit(seller.id);
-      if(listed>=limit){toast('Product limit reached ('+limit+'). Existing products were kept. Buy a plan to add more.');return}
-    }
-    return priorPublish.apply(this,arguments);
-  };
-  const priorDraftLimit=window.draftLimitForSeller;
-  window.draftLimitForSeller=function(s){return s?.id?window.sellerProductLimit(s.id):(priorDraftLimit?priorDraftLimit(s):10)};
-  const priorRestore=window.restoreRecycled;
-  if(priorRestore)window.restoreRecycled=function(id){
-    const x=(S.deletedProducts||[]).find(p=>p.id===id),seller=typeof currentSeller==='function'?currentSeller():null;
-    if(x&&x.recycledFrom!=='drafts'&&seller){
-      const listed=(S.products||[]).filter(p=>p.sellerId===seller.id).length;
-      const limit=window.sellerProductLimit(seller.id);
-      if(listed>=limit){toast('Product limit reached ('+limit+'). Buy a plan to restore/add this product.');return}
-    }
-    return priorRestore.apply(this,arguments);
-  };
-
-  // Only the admin can cancel. Cancellation is immediate and does not rewrite
-  // any historical order fee/earnings snapshot.
-  const priorCancel=window.adminCancelService;
-  window.adminCancelService=function(type,id){
-    if(typeof adminOnly==='function'&&!adminOnly())return;
-    if(type!=='subscription')return priorCancel?priorCancel.apply(this,arguments):undefined;
-    const sub=(S.subscriptions||[]).find(x=>x.id===id);
-    if(!sub||cancelledStates.has(upper(sub.status)))return;
-    const seller=S.sellers?.[sub.sellerId];
-    const refund=Math.round((typeof prorata==='function'?prorata(sub):0)*100)/100;
-    sub.status='CANCELLED';sub.cancelledAt=nowISO();sub.cancelledBy=S.currentUser?.id||'ADMIN';sub.cancellationReason='Cancelled by Admin';sub.endDate=sub.cancelledAt;sub.featuresDeactivatedAt=sub.cancelledAt;
-    if(seller){
-      seller.plan='FREE';
-      seller.subscriptionStatus='CANCELLED';
-      seller.subscriptionCancelledAt=sub.cancelledAt;
-      seller.activeSubscriptionId=null;
-      seller.planFeaturesDeactivatedAt=sub.cancelledAt;
-    }
-    S.balancePayments=S.balancePayments||[];S.serviceRefunds=S.serviceRefunds||[];
-    if(refund>0)S.balancePayments.unshift({id:uid('refund'),sellerId:sub.sellerId,amount:-refund,kind:'subscriptionRefund',source:'BALANCE',status:'SUCCESS',paymentVerified:true,date:nowISO(),subscriptionId:id});
-    S.serviceRefunds.unshift({id:uid('sr'),sellerId:sub.sellerId,type:'subscription',refId:id,amount:refund,reason:'ADMIN_CANCELLED',date:nowISO()});
-    try{adminAudit('Cancelled subscription immediately',id,{sellerId:sub.sellerId,plan:sub.plan,refund,featuresDeactivated:true,existingProductsKept:true})}catch{}
-    if(typeof syncSubscriptionPlans==='function')syncSubscriptionPlans();
-    save();toast('Subscription cancelled. Plan features are now inactive; existing products were kept.');render();
-  };
-
-  // Subscription-controlled entry points are blocked immediately after cancel.
-  const guardPlanFeature=(feature,message)=>{
-    const sid=typeof currentSeller==='function'?currentSeller()?.id:null;
-    if(!sid||window.sellerPlanFeatureActive(sid,feature))return true;
-    toast(message||('This '+feature+' feature requires an active plan.'));return false;
-  };
-  const priorOpenAd=window.openAdCampaign;
-  if(priorOpenAd)window.openAdCampaign=function(){if(!guardPlanFeature('ads','Ads are inactive on the FREE plan. Buy a plan to use Ads.'))return;return priorOpenAd.apply(this,arguments)};
-  const priorCreateAd=window.createAd;
-  if(priorCreateAd)window.createAd=function(){if(!guardPlanFeature('ads','Ads are inactive on the FREE plan. Buy a plan to use Ads.'))return;return priorCreateAd.apply(this,arguments)};
-  const priorDashAds=window.dashAds;
-  if(priorDashAds)window.dashAds=function(){
-    const sid=typeof currentSeller==='function'?currentSeller()?.id:null;
-    if(sid&&!window.sellerPlanFeatureActive(sid,'ads'))return dashShell('ads','<div class="dash-card"><h2>Ads inactive</h2><p class="muted">Your subscription was cancelled. Existing products and sales remain safe, but plan Ads features are inactive until you buy a plan again.</p><button class="btn primary" onclick="go(\'dashboard/subscription\')">View Plans</button></div>');
-    return priorDashAds.apply(this,arguments);
-  };
-
-  // Sync once on every render so an expired/cancelled plan cannot keep premium state.
-  const priorRender=window.render;
-  if(priorRender)window.render=function(){
-    try{if(typeof syncSubscriptionPlans==='function')syncSubscriptionPlans()}catch{}
-    return priorRender.apply(this,arguments);
-  };
-  try{if(typeof syncSubscriptionPlans==='function')syncSubscriptionPlans()}catch{}
-})();
-</script>
-
-<!-- data-saleearn-message-pack-payments="v2" -->
-<style id="saleearn-message-pack-payments-v2">
-.message-pack-payment-copy{margin:10px 0 16px;padding:12px;border:1px solid var(--line);border-radius:12px;background:var(--surface2,var(--card));font-size:12px;line-height:1.55}
-.message-pack-payment-copy b{display:block;font-size:14px;margin-bottom:3px}
-@media(max-width:600px){.message-pack-payment-actions{display:grid!important;grid-template-columns:1fr!important}.message-pack-payment-actions .btn{width:100%!important}}
-</style>
-<script id="saleearn-message-pack-payments-v2-script">
-(function(){
-  'use strict';
-  function messagePackConfig(){return S.messageSettings||{packPrice:10,packMessages:20,maxPacksPerDay:10}}
-  function messagePackSeller(){return typeof currentSeller==='function'?currentSeller():null}
-  function messagePackAlreadyPaid(gatewayId){return !!gatewayId&&(S.messagePacks||[]).some(x=>String(x.gatewayPaymentId||'')===String(gatewayId)&&x.status==='SUCCESS')}
-  function recordMessagePack(source,response,referenceId){
-    const s=messagePackSeller(),cfg=messagePackConfig();if(!s)return false;
-    const day=todayKey(),count=(S.messagePacks||[]).filter(x=>x.sellerId===s.id&&x.day===day&&x.status==='SUCCESS').length;
-    if(count>=Number(cfg.maxPacksPerDay||10)){toast('Daily message pack limit reached');return false}
-    const gatewayId=response?.razorpay_payment_id||response?.gatewayPaymentId||response?.id||null;
-    if(messagePackAlreadyPaid(gatewayId))return false;
-    S.messagePacks=S.messagePacks||[];
-    S.messagePacks.unshift({id:uid('mp'),sellerId:s.id,userId:S.currentUser?.id||null,day,amount:Number(cfg.packPrice||10),messages:Number(cfg.packMessages||20),source,paymentStatus:'SUCCESS',status:'SUCCESS',paymentVerified:true,gatewayPaymentId:gatewayId,razorpayOrderId:response?.razorpay_order_id||response?.razorpayOrderId||null,date:nowISO()});
-    save();closeModal();toast(Number(cfg.packMessages||20)+' extra messages added');render();return true;
-  }
-  window.openMessagePack=function(){
-    const c=messagePackConfig(),s=messagePackSeller();if(!s)return;
-    document.getElementById('modalRoot').innerHTML=`<div class="modal-bg" onclick="if(event.target===this)closeModal()"><div class="modal"><button class="btn iconbtn close" onclick="closeModal()">×</button><h2>Add message limit</h2><div class="message-pack-payment-copy"><b>Get ${esc(c.packMessages)} extra messages today</b>Pay ${money(c.packPrice)} using Razorpay or Sale Earn Web Test checkout.</div><div class="message-pack-payment-actions modal-footer"><button class="btn primary" onclick="buyMessagePack('RAZORPAY_TEST')">Pay Online with Razorpay</button><button class="btn" onclick="openMessagePackWebPayment()">Pay from Web</button></div></div></div>`;
-  };
-  window.buyMessagePack=async function(source){
-    const s=messagePackSeller(),c=messagePackConfig();if(!s)return;
-    const ref=uid('msgpack');
-    if(source==='BALANCE')return window.openMessagePackWebPayment();
-    if(source!=='ONLINE_TEST'&&source!=='RAZORPAY_TEST')return;
-    if(!systemGuard('payments','Payments are temporarily disabled by Admin'))return;
-    document.getElementById('modalRoot').innerHTML='<div class="modal-bg"><div class="modal" style="text-align:center;padding:34px"><div style="font-size:42px">💳</div><h2>Opening Razorpay</h2><p class="muted">Message pack will activate only after payment verification.</p></div></div>';
-    const ok=await startRazorpayCheckout({amount:Number(c.packPrice||10),description:razorpaySafeDescription('Sale Earn - Message pack'),customerName:S.currentUser?.name||s.name||'',customerEmail:S.currentUser?.email||'',metadata:{kind:'messagePack',referenceId:ref,sellerId:s.id,messages:Number(c.packMessages||20)},onVerified:async(response)=>{if(recordMessagePack('RAZORPAY_TEST',response,ref))toast('Razorpay payment verified');}});
-    if(!ok)closeModal();
-  };
-  window.openMessagePackWebPayment=function(){
-    const c=messagePackConfig(),s=messagePackSeller();if(!s)return;
-    window.messagePackWebPayment={amount:Number(c.packPrice||10),messages:Number(c.packMessages||20),sellerId:s.id,referenceId:uid('webmsgpack')};
-    document.getElementById('modalRoot').innerHTML=`<div class="modal-bg" onclick="if(event.target===this)closeModal()"><div class="modal payment-modal-wide"><button class="btn iconbtn close" onclick="closeModal()">×</button><div class="payment-layout"><aside class="payment-left"><div class="payment-left-title"><span class="logo-mark">SE</span><span>Sale Earn Web Checkout</span></div><div class="payment-total"><span>Messages</span><span>${esc(c.messages)}</span></div><div class="payment-total"><span>Total</span><span>${money(c.packPrice)}</span></div><div class="payment-methods"><h4>Pay from Web</h4><button class="pay-opt active" onclick="selectMessagePackWebPay(this,'UPI')">🔶 <span><b>UPI Test</b><small style="display:block;color:#7a8599;font-weight:600">Website test payment</small></span></button><button class="pay-opt" onclick="selectMessagePackWebPay(this,'Card')">▣ <span>Card Test</span></button><button class="pay-opt" onclick="selectMessagePackWebPay(this,'Paytm')">◉ <span>Paytm Test</span></button></div><div style="margin-top:auto;border-top:1px solid #e7e9ef;padding-top:15px;text-align:center;color:#7a8599;font-size:11px">Sale Earn Web Test Mode · No real charge</div></aside><section class="payment-right"><div class="payment-right-inner"><h2 style="text-align:center;margin:4px 0 5px">Web Payment</h2><div id="messagePackWebForm" class="pay-form"><div style="text-align:center"><h3>UPI Test Checkout</h3><p class="small muted">This is the existing Sale Earn web test payment page.</p><div class="payment-qr"><div class="payment-expire">Test payment ready</div></div></div></div><div class="modal-footer" style="margin-top:18px"><button class="btn" onclick="openMessagePack()">← Previous</button><button class="btn primary" onclick="completeMessagePackWebPayment()">Pay ${money(c.packPrice)} from Web</button></div></div></section></div></div></div>`;
-  };
-  window.selectMessagePackWebPay=function(btn,type){document.querySelectorAll('.payment-left .pay-opt').forEach(x=>x.classList.remove('active'));btn.classList.add('active');const box=document.getElementById('messagePackWebForm');if(!box)return;box.innerHTML=type==='UPI'?'<div style="text-align:center"><h3>UPI Test Checkout</h3><p class="small muted">Website UPI test payment selected.</p><div class="payment-qr"><div class="payment-expire">Test payment ready</div></div></div>':type==='Card'?'<div class="form-grid"><div class="field"><label>Card Number</label><input inputmode="numeric" placeholder="Test card number"></div><div class="field"><label>Expiry</label><input placeholder="MM/YY"></div><div class="field"><label>CVV</label><input inputmode="numeric" placeholder="123"></div></div><p class="small muted">Prototype/test mode only. Do not enter a real card.</p>':'<div class="field"><label>Paytm Mobile</label><input placeholder="98xxxxxx00"></div><p class="small muted">Prototype/test mode only.</p>'};
-  window.completeMessagePackWebPayment=function(){
-    if(!systemGuard('payments','Payments are temporarily disabled by Admin'))return;
-    const x=window.messagePackWebPayment,s=messagePackSeller();if(!x||!s)return;
-    const tx=fakeGatewayCreate('messagePack',x.amount,{refId:x.referenceId,sellerId:s.id,recipient:'ADMIN',source:'WEB_TEST'});
-    document.getElementById('modalRoot').innerHTML='<div class="modal-bg"><div class="modal" style="text-align:center;padding:34px"><div style="font-size:42px">⏳</div><h2>Verifying Web Payment</h2><p class="muted">Checking Sale Earn test transaction...</p></div></div>';
-    setTimeout(()=>{if(!fakeGatewayMarkSuccess(tx.id)){fakeGatewayFail(tx.id,'Web test gateway did not report success');toast('Web payment failed');return}setTimeout(()=>{if(!fakeGatewayVerify(tx.id,{userId:s.id,amount:x.amount,kind:'messagePack',recipient:'ADMIN',refId:x.referenceId})){fakeGatewayFail(tx.id,'Web test verification mismatch');toast('Web payment verification failed');return}const added=recordMessagePack('WEB_TEST',{id:tx.id,gatewayPaymentId:tx.id},x.referenceId);if(added)toast('Web payment verified')},450)},450);
-  };
-})();
-</script>
-
-<!-- data-saleearn-message-pack-sync="v1" -->
-<script id="saleearn-message-pack-sync-v1">
-(function(){
-  'use strict';
-  // The shared app-state installer used to replace a freshly paid message pack
-  // with an older remote snapshot. Merge keyed message data instead of losing it.
-  const baseInstall=window.seInstall;
-  const mergeRows=(localRows,remoteRows)=>{
-    const map=new Map();
-    [...(remoteRows||[]),...(localRows||[])].forEach(row=>{if(row?.id)map.set(String(row.id),row)});
-    return [...map.values()].sort((a,b)=>new Date(b.date||b.createdAt||0)-new Date(a.date||a.createdAt||0));
-  };
-  if(baseInstall)window.seInstall=function(remote){
-    const localPacks=structuredClone(S.messagePacks||[]),localMessages=structuredClone(S.messages||[]),localThreads=structuredClone(S.messageThreads||[]);
-    const result=baseInstall.apply(this,arguments);
-    S.messagePacks=mergeRows(localPacks,S.messagePacks);
-    S.messages=mergeRows(localMessages,S.messages);
-    S.messageThreads=mergeRows(localThreads,S.messageThreads);
-    if(typeof v21Init==='function')v21Init();
-    return result;
-  };
-  // Keep the paid pack visible immediately after saving, including when the
-  // server response does not yet contain the newest message fields.
-  const baseRecord=window.recordMessagePack;
-  window.saleEarnMessagePackSyncReady=true;
-})();
-</script>
-
-<!-- data-saleearn-all-payment-activation="v1" -->
-<script id="saleearn-all-payment-activation-v1">
-(function(){
-  'use strict';
-  const paidSources=new Set(['BALANCE','ONLINE_TEST','RAZORPAY_TEST']);
-  const text=v=>String(v??'');
-  const same=(a,b)=>text(a)===text(b);
-  const sidOf=x=>text(x?.sellerId||currentSeller?.()?.id||'');
-  const gatewayOf=x=>text(x?.gatewayPaymentId||'');
-  const list=(key)=>Array.isArray(S[key])?S[key]:(S[key]=[]);
-  const saveOnce=()=>{try{save()}catch(e){console.warn('Payment activation save failed',e)}};
-
-  // Reconcile a verified service payment idempotently. This is a safety net for
-  // callbacks that charged successfully but returned before the activation row
-  // was written, and for old records with slightly different field names.
-  const nativeApply=window.applyServicePayment;
-  window.applyServicePayment=function(x,source){
-    if(!x||x.paymentVerified!==true||!paidSources.has(text(source).toUpperCase()))return false;
-    const src=text(source).toUpperCase(),sid=sidOf(x),kind=text(x.kind).toLowerCase(),meta=x.meta||{},gateway=gatewayOf(x),seller=S.sellers?.[sid];
-    if(!sid||!seller)return false;
-    let nativeResult=false;
-    try{nativeResult=typeof nativeApply==='function'?!!nativeApply.call(this,x,source):false}catch(e){console.warn('Native payment activation failed; recovery will continue',e)}
-
-    if(src==='BALANCE'){
-      const bp=list('balancePayments');
-      if(!bp.some(b=>gateway&&same(b.gatewayPaymentId,gateway)&&b.status==='SUCCESS')){
-        bp.unshift({id:uid('bal'),sellerId:sid,amount:Number(x.amount||0),kind:x.kind,source:'BALANCE',status:'SUCCESS',paymentVerified:true,gatewayPaymentId:gateway||null,date:nowISO(),meta});
-      }
-    }
-
-    if(kind==='subscription'){
-      const subs=list('subscriptions');
-      let sub=subs.find(z=>gateway&&same(z.gatewayPaymentId,gateway));
-      if(!sub){
-        const now=nowISO(),end=new Date(Date.now()+Number(SUBSCRIPTION_DURATION_MS||30*86400000)).toISOString();
-        sub={id:uid('sub'),sellerId:sid,plan:text(meta.plan||x.plan||seller.plan||'FREE').toUpperCase(),amount:Number(x.amount||0),discount:Number(meta.discount||x.discount||0),paymentSource:src,paymentStatus:'SUCCESS',paymentVerified:true,gatewayPaymentId:gateway||null,date:now,startDate:now,endDate:end};
-        subs.unshift(sub);
-      }
-      const plan=text(sub.plan||meta.plan||x.plan||'FREE').toUpperCase();
-      sub.sellerId=sid;sub.plan=plan;sub.paymentSource=sub.paymentSource||src;sub.paymentStatus='SUCCESS';sub.paymentVerified=true;
-      seller.plan=plan;seller.subscriptionStatus='ACTIVE';seller.activeSubscriptionId=sub.id;seller.lastSubscription={plan,amount:Number(sub.amount||x.amount||0),date:sub.date||nowISO(),discount:Number(sub.discount||0)};
-      if(typeof syncSubscriptionPlans==='function')try{syncSubscriptionPlans()}catch(e){console.warn('Subscription plan reconcile failed',e)}
-    }else if(kind==='ad'){
-      const ads=list('ads');
-      let ad=ads.find(z=>gateway&&same(z.gatewayPaymentId,gateway));
-      if(!ad){
-        const start=new Date(),days=Math.max(1,Number(meta.days||x.days||1)),end=new Date(start.getTime()+days*86400000);
-        ad={id:uid('ad'),sellerId:sid,productId:meta.productId||x.productId||'',type:meta.type||x.type||'Ad',placement:meta.placement||meta.type||x.placement||x.type||'Marketplace',cost:Number(x.amount||0),clicks:0,status:'ACTIVE',startDate:start.toISOString(),endDate:end.toISOString(),paymentSource:src,paymentStatus:'SUCCESS',paymentVerified:true,gatewayPaymentId:gateway||null};
-        ads.unshift(ad);
-      }
-      ad.sellerId=sid;ad.status='ACTIVE';ad.paymentStatus='SUCCESS';ad.paymentVerified=true;ad.paymentSource=ad.paymentSource||src;
-    }
-    saveOnce();
-    return nativeResult||kind==='subscription'||kind==='ad';
-  };
-
-  // Preserve all paid rows when an older cloud snapshot is installed. The
-  // shared JSON state can otherwise briefly remove a just-activated service.
-  const oldInstall=window.seInstall;
-  const paidArrayKeys=['subscriptions','ads','balancePayments','referralUpgrades','gatewayPayments','serviceRefunds','messagePacks'];
-  const mergeRows=(localRows,remoteRows)=>{
-    const map=new Map();
-    [...(remoteRows||[]),...(localRows||[])].forEach(row=>{if(row?.id)map.set(text(row.id),row)});
-    return [...map.values()];
-  };
-  if(oldInstall)window.seInstall=function(remote){
-    const local={};
-    paidArrayKeys.forEach(k=>{local[k]=structuredClone(Array.isArray(S[k])?S[k]:[])});
-    const localBadges=structuredClone(S.badgeLedgers||{});
-    const result=oldInstall.apply(this,arguments);
-    paidArrayKeys.forEach(k=>{S[k]=mergeRows(local[k],S[k])});
-    S.badgeLedgers=S.badgeLedgers&&typeof S.badgeLedgers==='object'?S.badgeLedgers:{};
-    Object.entries(localBadges).forEach(([sellerId,ledger])=>{
-      const current=S.badgeLedgers[sellerId]||{};
-      S.badgeLedgers[sellerId]={...current,...ledger,credits:Math.max(Number(current.credits||0),Number(ledger.credits||0)),purchases:mergeRows(ledger.purchases,current.purchases),placedProductIds:[...new Set([...(current.placedProductIds||[]),...(ledger.placedProductIds||[])])]};
-    });
-    return result;
-  };
-  window.saleEarnPaymentActivationReady=true;
-})();
-</script>
-
-<!-- data-saleearn-money-ledger="v1" -->
-<script id="saleearn-money-ledger-v1">
-(function(){
-  'use strict';
-  const PAISA=100;
-  const n=v=>Number.isFinite(Number(v))?Number(v):0;
-  const paise=v=>Math.round(n(v)*PAISA);
-  const rupees=p=>n(p)/PAISA;
-  const exact=v=>Math.round(n(v)*PAISA)/PAISA;
-  const upper=v=>String(v||'').trim().toUpperCase();
-  function repairLegacyHundredfold(){
-    const div=v=>{let x=n(v),g=0;while(Math.abs(x)>=10000&&g++<6)x=exact(x/100);return x};
-    const fields={orders:['amount','originalAmount','couponDiscount','platformFee','netSellerAmount'],payouts:['amount','receivedAmount','returnedAmount'],ads:['cost'],subscriptions:['amount','discount'],balancePayments:['amount'],referralUpgrades:['amount','price'],referrals:['commission','paidAmount'],serviceRefunds:['amount'],sellerFinanceLedger:['amount'],adminFinancialLedger:['amount'],adminCommissionAdjustments:['amount']};
-    Object.entries(fields).forEach(([c,ks])=>(Array.isArray(S[c])?S[c]:[]).forEach(r=>ks.forEach(k=>{if(r[k]!=null)r[k]=div(r[k])})));
-    (S.products||[]).forEach(r=>{const m=String(r.title||'').match(/(?:₹|rs\.?\s*)\s*(\d+(?:\.\d+)?)/i),t=m?Number(m[1]):0;if(t>0&&n(r.price)>=t*50)r.price=exact(t);else if(Math.abs(n(r.price))>=10000)r.price=div(r.price);if(r.oldPrice!=null&&Math.abs(n(r.oldPrice))>=10000)r.oldPrice=div(r.oldPrice)});
-    (S.orders||[]).forEach(r=>{const p=(S.products||[]).find(x=>x.id===r.productId);if(p&&n(p.price)>0&&n(r.amount)>=n(p.price)*50)r.amount=exact(p.price);if(upper(r.status)==='SUCCESS'&&r.amount!=null){const f=exact(n(r.amount)*n(r.platformFeeRate??.20));r.platformFee=f;r.netSellerAmount=exact(n(r.amount)-f)}});
-  }
-  const arr=k=>Array.isArray(S[k])?S[k]:(S[k]=[]);
-  const moneyKeys={orders:['amount','originalAmount','couponDiscount','platformFee','netSellerAmount'],payouts:['amount','receivedAmount','returnedAmount'],ads:['cost'],subscriptions:['amount','discount'],balancePayments:['amount'],referralUpgrades:['amount','price'],referrals:['commission','paidAmount'],serviceRefunds:['amount'],sellerFinanceLedger:['amount'],adminFinancialLedger:['amount'],adminCommissionAdjustments:['amount']};
-  function normalizeMoneyState(){
-    repairLegacyHundredfold();
-    Object.entries(moneyKeys).forEach(([collection,keys])=>arr(collection).forEach(row=>keys.forEach(k=>{if(row[k]!==undefined&&row[k]!==null)row[k]=exact(row[k])})));
-    arr('coupons').forEach(c=>{if(String(c.type||'').toLowerCase()==='fixed'&&c.value!=null)c.value=exact(c.value)});
-    // Keep a deterministic, auditable ledger. It is derived from verified records
-    // and never becomes an additional balance, so it cannot create money.
-    const ledger=[];
-    arr('orders').filter(x=>upper(x.status)==='SUCCESS').forEach(x=>{
-      const gross=paise(x.amount),fee=paise(x.platformFee??(n(x.amount)*n(x.platformFeeRate??.20))),net=Math.max(0,gross-fee);
-      ledger.push({id:'sale:'+x.id,refId:x.id,type:'PRODUCT_SALE',status:'POSTED',sellerId:x.sellerId,date:x.date||nowISO(),buyerDebit:rupees(gross),sellerCredit:rupees(net),platformCredit:rupees(Math.min(gross,fee))});
-    });
-    arr('balancePayments').filter(x=>upper(x.status)==='SUCCESS'&&x.paymentVerified!==false).forEach(x=>{
-      const amount=paise(x.amount),sign=amount>=0?-1:1;
-      ledger.push({id:'balance:'+x.id,refId:x.id,type:upper(x.kind||'BALANCE_PAYMENT'),status:'POSTED',sellerId:x.sellerId,date:x.date||nowISO(),sellerDebit:rupees(Math.max(0,sign*amount)),sellerCredit:rupees(Math.max(0,-sign*amount)),platformCredit:rupees(Math.max(0,amount))});
-    });
-    arr('subscriptions').filter(x=>(upper(x.paymentStatus)==='SUCCESS'||x.paymentVerified===true)&&x.paymentVerified!==false).forEach(x=>ledger.push({id:'subscription:'+x.id,refId:x.id,type:'SUBSCRIPTION',status:'POSTED',sellerId:x.sellerId,date:x.date||nowISO(),platformCredit:exact(x.amount)}));
-    arr('ads').filter(x=>(upper(x.paymentStatus)==='SUCCESS'||x.paymentVerified===true)&&x.paymentVerified!==false).forEach(x=>ledger.push({id:'ad:'+x.id,refId:x.id,type:'AD_PAYMENT',status:'POSTED',sellerId:x.sellerId,date:x.startDate||x.date||nowISO(),platformCredit:exact(x.cost)}));
-    arr('payouts').filter(x=>['PENDING','PROCESSING','UNDER REVIEW','ON HOLD','APPROVED','PAID','SUCCESS','RECEIVED'].includes(upper(x.status))).forEach(x=>ledger.push({id:'payout:'+x.id,refId:x.id,type:'SELLER_PAYOUT',status:'POSTED',sellerId:x.sellerId,date:x.date||nowISO(),sellerDebit:exact(x.amount)}));
-    arr('referrals').filter(x=>['ACTIVE','PAID'].includes(upper(x.status))).forEach(x=>ledger.push({id:'referral:'+x.id,refId:x.id,type:'REFERRAL_COMMISSION',status:'POSTED',sellerId:x.sellerId,date:x.date||nowISO(),sellerCredit:exact(x.commission),platformDebit:exact(x.commission)}));
-    S.moneyLedger=ledger;
-  }
-  const nativeMoney=window.money;
-  window.money=function(value){
-    const v=exact(value);
-    return currencyCode()==='USD'?'$'+(v/usdInrRate()).toFixed(2):'₹'+v.toFixed(2);
-  };
-  const nativeCouponDiscount=window.couponDiscount;
-  if(nativeCouponDiscount)window.couponDiscount=function(c,price){return exact(nativeCouponDiscount(c,exact(price)))};
-  const nativeEarnings=window.sellerEarnings;
-  if(nativeEarnings)window.sellerEarnings=function(sid){return exact(nativeEarnings(sid))};
-  const nativeBalance=window.sellerAvailableBalance;
-  if(nativeBalance)window.sellerAvailableBalance=function(sid){return Math.max(0,exact(nativeBalance(sid)))};
-  const nativeCommission=window.webCommissionStats;
-  if(nativeCommission)window.webCommissionStats=function(days){const x=nativeCommission(days)||{};return Object.fromEntries(Object.entries(x).map(([k,v])=>[k,exact(v)]))};
-  const nativeServiceApply=window.applyServicePayment;
-  if(nativeServiceApply)window.applyServicePayment=function(x,source){
-    if(x&&x.amount!=null)x={...x,amount:exact(x.amount),meta:{...(x.meta||{}),basePrice:x.meta?.basePrice==null?x.meta?.basePrice:exact(x.meta.basePrice),baseAmount:x.meta?.baseAmount==null?x.meta?.baseAmount:exact(x.meta.baseAmount),discount:x.meta?.discount==null?x.meta?.discount:exact(x.meta.discount)}};
-    const result=nativeServiceApply.call(this,x,source);normalizeMoneyState();return result;
-  };
-  const nativeSave=window.save;
-  if(nativeSave)window.save=function(){normalizeMoneyState();return nativeSave.apply(this,arguments)};
-  const nativeSnapshot=window.onlineSnapshot;
-  if(nativeSnapshot)window.onlineSnapshot=function(){return {...nativeSnapshot(),moneyLedger:S.moneyLedger||[]}};
-  const nativeInstall=window.seInstall;
-  if(nativeInstall)window.seInstall=function(remote){const local=structuredClone(S.moneyLedger||[]),result=nativeInstall.apply(this,arguments);repairLegacyHundredfold();normalizeMoneyState();const remoteLedger=Array.isArray(S.moneyLedger)?S.moneyLedger:[];const map=new Map([...remoteLedger,...local].map(x=>[String(x.id),x]));S.moneyLedger=[...map.values()];return result};
-  normalizeMoneyState();
-  window.saleEarnMoney={paise,rupees,exact,normalize:normalizeMoneyState};
-  window.saleEarnMoneyLedgerReady=true;
-})();
-</script>
 </html>
