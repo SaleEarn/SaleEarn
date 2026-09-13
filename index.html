@@ -6398,12 +6398,20 @@ html:root[data-theme="dark"] .ad-premium{background:linear-gradient(135deg,#0f19
   const PAISA=100;
   const n=v=>Number.isFinite(Number(v))?Number(v):0;
   const paise=v=>Math.round(n(v)*PAISA);
-  const rupees=p=>paise(p)/PAISA;
-  const exact=v=>rupees(paise(v));
+  const rupees=p=>n(p)/PAISA;
+  const exact=v=>Math.round(n(v)*PAISA)/PAISA;
   const upper=v=>String(v||'').trim().toUpperCase();
+  function repairLegacyHundredfold(){
+    const div=v=>{let x=n(v),g=0;while(Math.abs(x)>=10000&&g++<6)x=exact(x/100);return x};
+    const fields={orders:['amount','originalAmount','couponDiscount','platformFee','netSellerAmount'],payouts:['amount','receivedAmount','returnedAmount'],ads:['cost'],subscriptions:['amount','discount'],balancePayments:['amount'],referralUpgrades:['amount','price'],referrals:['commission','paidAmount'],serviceRefunds:['amount'],sellerFinanceLedger:['amount'],adminFinancialLedger:['amount'],adminCommissionAdjustments:['amount']};
+    Object.entries(fields).forEach(([c,ks])=>(Array.isArray(S[c])?S[c]:[]).forEach(r=>ks.forEach(k=>{if(r[k]!=null)r[k]=div(r[k])})));
+    (S.products||[]).forEach(r=>{const m=String(r.title||'').match(/(?:₹|rs\.?\s*)\s*(\d+(?:\.\d+)?)/i),t=m?Number(m[1]):0;if(t>0&&n(r.price)>=t*50)r.price=exact(t);else if(Math.abs(n(r.price))>=10000)r.price=div(r.price);if(r.oldPrice!=null&&Math.abs(n(r.oldPrice))>=10000)r.oldPrice=div(r.oldPrice)});
+    (S.orders||[]).forEach(r=>{const p=(S.products||[]).find(x=>x.id===r.productId);if(p&&n(p.price)>0&&n(r.amount)>=n(p.price)*50)r.amount=exact(p.price);if(upper(r.status)==='SUCCESS'&&r.amount!=null){const f=exact(n(r.amount)*n(r.platformFeeRate??.20));r.platformFee=f;r.netSellerAmount=exact(n(r.amount)-f)}});
+  }
   const arr=k=>Array.isArray(S[k])?S[k]:(S[k]=[]);
   const moneyKeys={orders:['amount','originalAmount','couponDiscount','platformFee','netSellerAmount'],payouts:['amount','receivedAmount','returnedAmount'],ads:['cost'],subscriptions:['amount','discount'],balancePayments:['amount'],referralUpgrades:['amount','price'],referrals:['commission','paidAmount'],serviceRefunds:['amount'],sellerFinanceLedger:['amount'],adminFinancialLedger:['amount'],adminCommissionAdjustments:['amount']};
   function normalizeMoneyState(){
+    repairLegacyHundredfold();
     Object.entries(moneyKeys).forEach(([collection,keys])=>arr(collection).forEach(row=>keys.forEach(k=>{if(row[k]!==undefined&&row[k]!==null)row[k]=exact(row[k])})));
     arr('coupons').forEach(c=>{if(String(c.type||'').toLowerCase()==='fixed'&&c.value!=null)c.value=exact(c.value)});
     // Keep a deterministic, auditable ledger. It is derived from verified records
@@ -6446,64 +6454,10 @@ html:root[data-theme="dark"] .ad-premium{background:linear-gradient(135deg,#0f19
   const nativeSnapshot=window.onlineSnapshot;
   if(nativeSnapshot)window.onlineSnapshot=function(){return {...nativeSnapshot(),moneyLedger:S.moneyLedger||[]}};
   const nativeInstall=window.seInstall;
-  if(nativeInstall)window.seInstall=function(remote){const local=structuredClone(S.moneyLedger||[]),result=nativeInstall.apply(this,arguments);const remoteLedger=Array.isArray(S.moneyLedger)?S.moneyLedger:[];const map=new Map([...remoteLedger,...local].map(x=>[String(x.id),x]));S.moneyLedger=[...map.values()];return result};
+  if(nativeInstall)window.seInstall=function(remote){const local=structuredClone(S.moneyLedger||[]),result=nativeInstall.apply(this,arguments);repairLegacyHundredfold();normalizeMoneyState();const remoteLedger=Array.isArray(S.moneyLedger)?S.moneyLedger:[];const map=new Map([...remoteLedger,...local].map(x=>[String(x.id),x]));S.moneyLedger=[...map.values()];return result};
   normalizeMoneyState();
   window.saleEarnMoney={paise,rupees,exact,normalize:normalizeMoneyState};
   window.saleEarnMoneyLedgerReady=true;
-})();
-</script>
-
-<!-- data-saleearn-subscription-activation-reconcile="v1" -->
-<script id="saleearn-subscription-activation-reconcile-v1">
-(function(){
-  'use strict';
-  const upper=v=>String(v||'').trim().toUpperCase();
-  const cancelled=new Set(['CANCELLED','CANCELED','FAILED','VOID','REVOKED','REFUNDED']);
-  const successStates=new Set(['SUCCESS','PAID','APPROVED','ACTIVE','VERIFIED']);
-  const validPaid=x=>{
-    if(!x||cancelled.has(upper(x.status))||x.paymentVerified===false)return false;
-    const hasProof=x.paymentVerified===true||successStates.has(upper(x.paymentStatus))||successStates.has(upper(x.status));
-    return hasProof;
-  };
-  const time=v=>{const t=new Date(v||0).getTime();return Number.isFinite(t)?t:NaN};
-  const startOf=x=>time(x?.startDate||x?.date||x?.createdAt||x?.paidAt);
-  const endOf=x=>{const explicit=time(x?.endDate||x?.expiresAt);if(Number.isFinite(explicit))return explicit;const start=startOf(x);return Number.isFinite(start)?start+Number(SUBSCRIPTION_DURATION_MS||30*86400000):NaN};
-  const activeNow=(x,when=Date.now())=>{const st=startOf(x),en=endOf(x);return validPaid(x)&&Number.isFinite(st)&&st<=when&&Number.isFinite(en)&&when<en};
-  window.activeSubscriptionAt=function(sid,when){
-    const now=time(when)||Date.now(),key=String(sid);
-    return (S.subscriptions||[]).filter(x=>String(x.sellerId)===key&&activeNow(x,now)).sort((a,b)=>startOf(b)-startOf(a))[0]||null;
-  };
-  window.sellerPlanNow=function(sid,when){
-    const sub=window.activeSubscriptionAt(sid,when||Date.now()),ss=S.sellers?.[sid];
-    return upper(sub?.plan||ss?.plan||'FREE')||'FREE';
-  };
-  window.sellerPlanConfig=function(sid,when){
-    const id=window.sellerPlanNow(sid,when);
-    return (ensurePlatformConfig().plans||[]).find(p=>upper(p.id)===id)||{id:'FREE',name:'FREE',ads:false,analytics:false,referrals:true,advanced:false,prioritySupport:false,verified:false,commissionPct:20,uploadLimit:10};
-  };
-  window.sellerPlanFeatureActive=function(sid,feature,when){return window.sellerPlanConfig(sid,when)[feature]!==false};
-  function reconcile(){
-    let changed=false,now=Date.now();
-    S.subscriptions=Array.isArray(S.subscriptions)?S.subscriptions:[];
-    Object.values(S.sellers||{}).forEach(ss=>{
-      const sub=window.activeSubscriptionAt(ss.id,now),old=String(ss.plan||'FREE'),next=upper(sub?.plan||'FREE')||'FREE';
-      if(sub){
-        if(sub.status!=='ACTIVE'){sub.status='ACTIVE';changed=true}
-        if(sub.paymentStatus!=='SUCCESS'){sub.paymentStatus='SUCCESS';changed=true}
-        if(sub.paymentVerified!==true){sub.paymentVerified=true;changed=true}
-        if(!sub.startDate&&sub.date){sub.startDate=sub.date;changed=true}
-        if(!sub.endDate){sub.endDate=new Date(startOf(sub)+Number(SUBSCRIPTION_DURATION_MS||30*86400000)).toISOString();changed=true}
-      }
-      if(old!==next){ss.plan=next;changed=true}
-      ss.subscriptionStatus=sub?'ACTIVE':(S.subscriptions.some(x=>String(x.sellerId)===String(ss.id)&&validPaid(x))?'EXPIRED':(ss.subscriptionStatus||'FREE'));
-      ss.activeSubscriptionId=sub?.id||null;
-    });
-    if(changed){try{save()}catch(e){console.warn('Subscription reconciliation save failed',e)}}
-    return changed;
-  }
-  window.syncSubscriptionPlans=reconcile;
-  reconcile();
-  window.saleEarnSubscriptionActivationReady=true;
 })();
 </script>
 </html>
