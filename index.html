@@ -5293,7 +5293,7 @@ applyAppearanceTexture();
 })();
 </script>
 
-<style data-saleearn-product-check="v1">
+<style data-saleearn-product-check="v1" data-saleearn-product-check-undo="v1">
 .product-check-badge{display:inline-flex;align-items:center;gap:4px;margin:3px 3px 0 0;padding:5px 9px;border-radius:999px;font-size:10px;font-weight:900;line-height:1;border:1px solid transparent}
 .product-check-badge.checked{background:#fff4cc;color:#966400;border-color:#ffe09a}
 .product-check-badge.verified{background:#e8f9f1;color:#12835d;border-color:#bfead5}
@@ -5316,16 +5316,28 @@ applyAppearanceTexture();
     if(!adminOnly())return;
     const p=product(id);if(!p)return toast('Product not found');
     if(kind==='checked'){
-      if(pcChecked(p))return toast('Product already checked');
-      p[PC_CHECKED]=true;
-      adminAudit('Checked product',p.id,{productId:p.id,category:p.category||null});
-      save();toast('Product added to Checked');
+      if(pcVerified(p))return toast('First move this product back from Verified');
+      if(pcChecked(p)){
+        p[PC_CHECKED]=false;
+        adminAudit('Moved product back from Checked',p.id,{productId:p.id,category:p.category||null});
+        save();toast('Product moved back from Checked');
+      }else{
+        p[PC_CHECKED]=true;
+        adminAudit('Checked product',p.id,{productId:p.id,category:p.category||null});
+        save();toast('Product added to Checked');
+      }
     }else if(kind==='verified'){
-      if(pcVerified(p))return toast('Product already verified');
-      p[PC_CHECKED]=true;
-      p[PC_VERIFIED]=true;
-      adminAudit('Verified product',p.id,{productId:p.id,category:p.category||null});
-      save();toast('Product added to Verified');
+      if(pcVerified(p)){
+        p[PC_VERIFIED]=false;
+        p[PC_CHECKED]=true;
+        adminAudit('Moved product back from Verified',p.id,{productId:p.id,category:p.category||null});
+        save();toast('Product moved back to Checked');
+      }else{
+        p[PC_CHECKED]=true;
+        p[PC_VERIFIED]=true;
+        adminAudit('Verified product',p.id,{productId:p.id,category:p.category||null});
+        save();toast('Product added to Verified');
+      }
     }
     render();
   };
@@ -5336,7 +5348,9 @@ applyAppearanceTexture();
   }
   function pcProductCard(p){
     const checked=pcChecked(p),verified=pcVerified(p),sellerData=seller(p.sellerId);
-    return `<article class="pc-product"><div class="pc-product-image">${p.image?`<img src="${esc(p.image)}" alt="${esc(p.title||'Product')}">`:'🧩'}</div><div class="pc-product-main"><h3 title="${esc(p.title||'Untitled product')}">${esc(p.title||'Untitled product')}</h3><div class="pc-meta">Category: <b>${esc(p.category||'Other')}</b><br>Seller: @${esc(p.sellerId||'-')} · ${esc(sellerData.name||'Seller')}<br>Price: ${money(p.price||0)} · Sales: ${productSales(p.id)}</div><div class="pc-badges">${pcBadgeMarkup(p)}</div><div class="pc-actions"><button class="btn" onclick="adminNav('product/${pcEscId(p.id)}')">Open Product</button><button class="btn ${checked?'primary':''}" ${checked?'disabled':''} onclick="adminProductCheckAction('${pcEscId(p.id)}','checked')">${checked?'Checked':'Check'}</button><button class="btn ${verified?'primary':''}" ${verified?'disabled':''} onclick="adminProductCheckAction('${pcEscId(p.id)}','verified')">${verified?'Verified':'Verify'}</button></div></div></article>`;
+    const checkedLabel=verified?'Checked':checked?'Back Checked':'Check';
+    const verifyLabel=verified?'Back Verified':'Verify';
+    return `<article class="pc-product"><div class="pc-product-image">${p.image?`<img src="${esc(p.image)}" alt="${esc(p.title||'Product')}">`:'🧩'}</div><div class="pc-product-main"><h3 title="${esc(p.title||'Untitled product')}">${esc(p.title||'Untitled product')}</h3><div class="pc-meta">Category: <b>${esc(p.category||'Other')}</b><br>Seller: @${esc(p.sellerId||'-')} · ${esc(sellerData.name||'Seller')}<br>Price: ${money(p.price||0)} · Sales: ${productSales(p.id)}</div><div class="pc-badges">${pcBadgeMarkup(p)}</div><div class="pc-actions"><button class="btn" onclick="adminNav('product/${pcEscId(p.id)}')">Open Product</button><button class="btn ${checked&&!verified?'primary':''}" ${verified?'disabled':''} onclick="adminProductCheckAction('${pcEscId(p.id)}','checked')">${checkedLabel}</button><button class="btn ${verified?'primary':''}" onclick="adminProductCheckAction('${pcEscId(p.id)}','verified')">${verifyLabel}</button></div></div></article>`;
   }
   function pcCounts(){const all=pcProducts();return {total:all.length,checked:all.filter(pcChecked).length,verified:all.filter(pcVerified).length};}
   function pcSidebar(){
@@ -5363,7 +5377,8 @@ applyAppearanceTexture();
   function pcDetailWithControls(id){
     const p=product(id),html=adminProductDetail(id);
     if(!p)return html;
-    const controls=`<div class="admin-card" style="margin-bottom:18px"><div class="section-head"><div><h2>Product Review</h2><div class="sub">Admin review status is shown on the marketplace product card.</div></div><div>${pcBadgeMarkup(p)||'<span class="admin-pill warn">Not checked</span>'}</div></div><div class="admin-actions"><button class="btn" ${pcChecked(p)?'disabled':''} onclick="adminProductCheckAction('${pcEscId(p.id)}','checked')">${pcChecked(p)?'✓ Checked':'Mark Checked'}</button><button class="btn primary" ${pcVerified(p)?'disabled':''} onclick="adminProductCheckAction('${pcEscId(p.id)}','verified')">${pcVerified(p)?'✓ Verified':'Mark Verified'}</button><button class="btn" onclick="adminNav('product-check')">Back to Product Check</button></div></div>`;
+    const checked=pcChecked(p),verified=pcVerified(p);
+    const controls=`<div class="admin-card" style="margin-bottom:18px"><div class="section-head"><div><h2>Product Review</h2><div class="sub">Admin review status is shown on the marketplace product card.</div></div><div>${pcBadgeMarkup(p)||'<span class="admin-pill warn">Not checked</span>'}</div></div><div class="admin-actions"><button class="btn ${checked&&!verified?'primary':''}" ${verified?'disabled':''} onclick="adminProductCheckAction('${pcEscId(p.id)}','checked')">${verified?'✓ Checked':checked?'Back Checked':'Mark Checked'}</button><button class="btn ${verified?'primary':''}" onclick="adminProductCheckAction('${pcEscId(p.id)}','verified')">${verified?'Back Verified':'Mark Verified'}</button><button class="btn" onclick="adminNav('product-check')">Back to Product Check</button></div></div>`;
     return html.replace('<div class="admin-content">',`<div class="admin-content">${controls}`);
   }
 
@@ -5417,5 +5432,53 @@ applyAppearanceTexture();
 @media(min-width:1051px){.pm-list.list-view{grid-template-columns:1fr}.pm-list.list-view .pm-card{grid-template-columns:24px 100px minmax(0,1fr) auto;grid-template-rows:auto;align-items:center}.pm-list.list-view .pm-check{grid-row:1}.pm-list.list-view .pm-actions{grid-column:4;grid-row:1;justify-content:flex-end}.pm-list.list-view .pm-info{grid-row:1}}
 @media(max-width:760px){.pm-card{grid-template-columns:22px 78px minmax(0,1fr);gap:9px}.pm-image{width:78px;height:72px}.pm-info h3{font-size:15px;-webkit-line-clamp:4}.pm-actions{grid-column:2 / -1}.pm-actions .btn{padding:7px 9px;font-size:11px}}
 </style>
+
+
+<style data-saleearn-admin-seller-preview="v1">
+.admin-preview-exit{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 0 16px;padding:12px 14px;border:1px solid #cfc9ff;border-radius:14px;background:#f2f0ff;color:#3e35a8;font-size:12px;font-weight:800}.admin-preview-exit .btn{padding:8px 11px}
+</style>
+<script data-saleearn-admin-seller-preview="v1">
+(function(){
+  'use strict';
+  const originalDashShell=typeof dashShell==='function'?dashShell:null;
+
+  window.adminOpenSellerDashboard=function(sid){
+    if(!adminOnly())return;
+    const id=String(sid||'');
+    if(!id||!S.sellers?.[id])return toast('Seller store not found');
+    window.adminSellerPreview=id;
+    window.__adminPreviewReturnRoute=route();
+    go('dashboard/overview');
+    setTimeout(()=>window.render(),0);
+  };
+
+  window.adminExitSellerDashboard=function(){
+    window.adminSellerPreview='';
+    const back=window.__adminPreviewReturnRoute&&String(window.__adminPreviewReturnRoute).startsWith('admin')?window.__adminPreviewReturnRoute:'admin/users';
+    window.__adminPreviewReturnRoute='';
+    go(back);
+  };
+
+  function adminPreviewDashShell(page,content){
+    const s=seller(String(window.adminSellerPreview));
+    const nav=(typeof dashItems!=='undefined'?dashItems:[]).map(x=>`<button class="dash-link ${page===x[0]?'active':''}" onclick="go('dashboard/${x[0]}')">${x[1]} <span>${x[2]}</span></button>`).join('');
+    const warningCount=(S.warnings||[]).filter(w=>w.sellerId===s.id).length;
+    return `<div class="dashboard-shell"><aside class="dash-side"><button class="dash-brand dash-brand-link" type="button" onclick="go('market')" title="Open Marketplace"><span class="logo-mark">SE</span><span>Vendor Portal</span></button><button class="dash-link" onclick="adminExitSellerDashboard()">← <span>Exit Admin Preview</span></button><button class="dash-link" onclick="go('seller/${encodeURIComponent(s.id)}')">↗ <span>View Seller Store</span></button><div class="dash-nav-title">MANAGEMENT</div>${nav}<div class="store-mini">${avatar(s)}<div><b class="small">${esc(s.name||'Seller Store')}</b><div class="small muted">${esc(s.owner||'Seller')}</div></div></div><button class="btn upgrade" onclick="go('dashboard/subscription')">♙ Manage Plan</button></aside><section class="dash-main"><div class="dash-top"><h1>${dashTitle(page)}</h1><div style="display:flex;align-items:center;gap:8px"><span class="admin-pill success">ADMIN VIEW</span><div class="plan-badge">◈ &nbsp; ${esc(s.plan||'FREE')}</div>${warningCount?`<button class="btn" onclick="go('dashboard/warnings')">⚠<span class="seller-warning-badge">${warningCount}</span></button>`:''}</div></div><div class="dash-content"><div class="admin-preview-exit"><span>Admin is controlling <b>@${esc(s.id)}</b> seller dashboard.</span><button class="btn" onclick="adminExitSellerDashboard()">Exit Preview</button></div>${content}</div></section></div>`;
+  }
+
+  if(originalDashShell){
+    dashShell=function(page,content){
+      if(window.adminSellerPreview&&isAdmin())return adminPreviewDashShell(page,content);
+      return originalDashShell(page,content);
+    };
+  }
+
+  // If the current route is the seller dashboard after opening preview, refresh it with the preview shell.
+  const previousRender=window.render;
+  window.render=function(){
+    previousRender();
+  };
+})();
+</script>
 
 </html>
