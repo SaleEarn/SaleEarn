@@ -6280,4 +6280,114 @@ html:root[data-theme="dark"] .ad-premium{background:linear-gradient(135deg,#0f19
   };
 })();
 </script>
+
+<!-- data-saleearn-message-pack-sync="v1" -->
+<script id="saleearn-message-pack-sync-v1">
+(function(){
+  'use strict';
+  // The shared app-state installer used to replace a freshly paid message pack
+  // with an older remote snapshot. Merge keyed message data instead of losing it.
+  const baseInstall=window.seInstall;
+  const mergeRows=(localRows,remoteRows)=>{
+    const map=new Map();
+    [...(remoteRows||[]),...(localRows||[])].forEach(row=>{if(row?.id)map.set(String(row.id),row)});
+    return [...map.values()].sort((a,b)=>new Date(b.date||b.createdAt||0)-new Date(a.date||a.createdAt||0));
+  };
+  if(baseInstall)window.seInstall=function(remote){
+    const localPacks=structuredClone(S.messagePacks||[]),localMessages=structuredClone(S.messages||[]),localThreads=structuredClone(S.messageThreads||[]);
+    const result=baseInstall.apply(this,arguments);
+    S.messagePacks=mergeRows(localPacks,S.messagePacks);
+    S.messages=mergeRows(localMessages,S.messages);
+    S.messageThreads=mergeRows(localThreads,S.messageThreads);
+    if(typeof v21Init==='function')v21Init();
+    return result;
+  };
+  // Keep the paid pack visible immediately after saving, including when the
+  // server response does not yet contain the newest message fields.
+  const baseRecord=window.recordMessagePack;
+  window.saleEarnMessagePackSyncReady=true;
+})();
+</script>
+
+<!-- data-saleearn-all-payment-activation="v1" -->
+<script id="saleearn-all-payment-activation-v1">
+(function(){
+  'use strict';
+  const paidSources=new Set(['BALANCE','ONLINE_TEST','RAZORPAY_TEST']);
+  const text=v=>String(v??'');
+  const same=(a,b)=>text(a)===text(b);
+  const sidOf=x=>text(x?.sellerId||currentSeller?.()?.id||'');
+  const gatewayOf=x=>text(x?.gatewayPaymentId||'');
+  const list=(key)=>Array.isArray(S[key])?S[key]:(S[key]=[]);
+  const saveOnce=()=>{try{save()}catch(e){console.warn('Payment activation save failed',e)}};
+
+  // Reconcile a verified service payment idempotently. This is a safety net for
+  // callbacks that charged successfully but returned before the activation row
+  // was written, and for old records with slightly different field names.
+  const nativeApply=window.applyServicePayment;
+  window.applyServicePayment=function(x,source){
+    if(!x||x.paymentVerified!==true||!paidSources.has(text(source).toUpperCase()))return false;
+    const src=text(source).toUpperCase(),sid=sidOf(x),kind=text(x.kind).toLowerCase(),meta=x.meta||{},gateway=gatewayOf(x),seller=S.sellers?.[sid];
+    if(!sid||!seller)return false;
+    let nativeResult=false;
+    try{nativeResult=typeof nativeApply==='function'?!!nativeApply.call(this,x,source):false}catch(e){console.warn('Native payment activation failed; recovery will continue',e)}
+
+    if(src==='BALANCE'){
+      const bp=list('balancePayments');
+      if(!bp.some(b=>gateway&&same(b.gatewayPaymentId,gateway)&&b.status==='SUCCESS')){
+        bp.unshift({id:uid('bal'),sellerId:sid,amount:Number(x.amount||0),kind:x.kind,source:'BALANCE',status:'SUCCESS',paymentVerified:true,gatewayPaymentId:gateway||null,date:nowISO(),meta});
+      }
+    }
+
+    if(kind==='subscription'){
+      const subs=list('subscriptions');
+      let sub=subs.find(z=>gateway&&same(z.gatewayPaymentId,gateway));
+      if(!sub){
+        const now=nowISO(),end=new Date(Date.now()+Number(SUBSCRIPTION_DURATION_MS||30*86400000)).toISOString();
+        sub={id:uid('sub'),sellerId:sid,plan:text(meta.plan||x.plan||seller.plan||'FREE').toUpperCase(),amount:Number(x.amount||0),discount:Number(meta.discount||x.discount||0),paymentSource:src,paymentStatus:'SUCCESS',paymentVerified:true,gatewayPaymentId:gateway||null,date:now,startDate:now,endDate:end};
+        subs.unshift(sub);
+      }
+      const plan=text(sub.plan||meta.plan||x.plan||'FREE').toUpperCase();
+      sub.sellerId=sid;sub.plan=plan;sub.paymentSource=sub.paymentSource||src;sub.paymentStatus='SUCCESS';sub.paymentVerified=true;
+      seller.plan=plan;seller.subscriptionStatus='ACTIVE';seller.activeSubscriptionId=sub.id;seller.lastSubscription={plan,amount:Number(sub.amount||x.amount||0),date:sub.date||nowISO(),discount:Number(sub.discount||0)};
+      if(typeof syncSubscriptionPlans==='function')try{syncSubscriptionPlans()}catch(e){console.warn('Subscription plan reconcile failed',e)}
+    }else if(kind==='ad'){
+      const ads=list('ads');
+      let ad=ads.find(z=>gateway&&same(z.gatewayPaymentId,gateway));
+      if(!ad){
+        const start=new Date(),days=Math.max(1,Number(meta.days||x.days||1)),end=new Date(start.getTime()+days*86400000);
+        ad={id:uid('ad'),sellerId:sid,productId:meta.productId||x.productId||'',type:meta.type||x.type||'Ad',placement:meta.placement||meta.type||x.placement||x.type||'Marketplace',cost:Number(x.amount||0),clicks:0,status:'ACTIVE',startDate:start.toISOString(),endDate:end.toISOString(),paymentSource:src,paymentStatus:'SUCCESS',paymentVerified:true,gatewayPaymentId:gateway||null};
+        ads.unshift(ad);
+      }
+      ad.sellerId=sid;ad.status='ACTIVE';ad.paymentStatus='SUCCESS';ad.paymentVerified=true;ad.paymentSource=ad.paymentSource||src;
+    }
+    saveOnce();
+    return nativeResult||kind==='subscription'||kind==='ad';
+  };
+
+  // Preserve all paid rows when an older cloud snapshot is installed. The
+  // shared JSON state can otherwise briefly remove a just-activated service.
+  const oldInstall=window.seInstall;
+  const paidArrayKeys=['subscriptions','ads','balancePayments','referralUpgrades','gatewayPayments','serviceRefunds','messagePacks'];
+  const mergeRows=(localRows,remoteRows)=>{
+    const map=new Map();
+    [...(remoteRows||[]),...(localRows||[])].forEach(row=>{if(row?.id)map.set(text(row.id),row)});
+    return [...map.values()];
+  };
+  if(oldInstall)window.seInstall=function(remote){
+    const local={};
+    paidArrayKeys.forEach(k=>{local[k]=structuredClone(Array.isArray(S[k])?S[k]:[])});
+    const localBadges=structuredClone(S.badgeLedgers||{});
+    const result=oldInstall.apply(this,arguments);
+    paidArrayKeys.forEach(k=>{S[k]=mergeRows(local[k],S[k])});
+    S.badgeLedgers=S.badgeLedgers&&typeof S.badgeLedgers==='object'?S.badgeLedgers:{};
+    Object.entries(localBadges).forEach(([sellerId,ledger])=>{
+      const current=S.badgeLedgers[sellerId]||{};
+      S.badgeLedgers[sellerId]={...current,...ledger,credits:Math.max(Number(current.credits||0),Number(ledger.credits||0)),purchases:mergeRows(ledger.purchases,current.purchases),placedProductIds:[...new Set([...(current.placedProductIds||[]),...(ledger.placedProductIds||[])])]};
+    });
+    return result;
+  };
+  window.saleEarnPaymentActivationReady=true;
+})();
+</script>
 </html>
