@@ -5155,7 +5155,7 @@ function state(){const sid=currentSeller()?.id||S.currentUser?.sellerId||'guest'
 function spec(b){return b||null}function badgeHTML(p){const b=spec(p?.badge);if(!b?.text)return'';return `<span class="product-badge ${esc(b.shape||'pill')}" style="--badge-bg:${esc(b.bg||'#5146e5')};--badge-text:${esc(b.textColor||'#fff')};--badge-border:${esc(b.border||'#fff')};--badge-font:${esc(b.font||'Inter')}">${esc(b.text)}</span>`}
 const oldCard=productCard;productCard=function(p){let h=oldCard(p);return h.replace(/(<article class="product-card[^>]*>)/,`$1${badgeHTML(p)}`)};
 function usedFree(){return Math.min(3,state().placedProductIds.length)}function canNewBadge(){return usedFree()<3||state().credits>0}
-window.openBadgeDesigner=function(editId=''){const d=editId?product(editId):S.draft||{},b=d.badge||{text:'New',bg:'#5146e5',textColor:'#fff',border:'#fff',font:'Inter',shape:'pill'};window.badgeEditId=editId;document.getElementById('modalRoot').innerHTML=`<div class="modal-bg"><div class="modal"><button class="btn iconbtn close" onclick="closeModal()">×</button><h2>Product Badge Designer</h2><div class="badge-credit-bar"><div class="trust-item"><small>Free used</small><b>${usedFree()}/3</b></div><div class="trust-item"><small>Paid credits</small><b>${state().credits}/100</b></div><div class="trust-item"><small>Price</small><b>₹3 each</b></div><div class="trust-item"><small>Per product</small><b>1 badge</b></div></div><div class="field"><label>Search badge</label><input id="badgeSearch" placeholder="Search New, Limited, Trending..." oninput="filterBadgeLibrary(this.value)"></div><div id="badgeLibrary" class="badge-library">${BADGES.map(x=>`<button class="badge-choice ${x===b.text?'active':''}" data-name="${esc(x.toLowerCase())}" onclick="selectBadgeText('${esc(x)}')">${esc(x)}</button>`).join('')}</div><div class="form-grid badge-designer"><div class="field"><label>Badge text</label><input id="badgeText" maxlength="24" value="${esc(b.text)}" oninput="badgePreview()"></div><div class="field"><label>Shape</label><select id="badgeShape" onchange="badgePreview()">${['pill','rounded','square','ribbon'].map(x=>`<option ${b.shape===x?'selected':''}>${x}</option>`).join('')}</select></div><div class="field"><label>Background</label><input id="badgeBg" type="color" value="${esc(b.bg)}" oninput="badgePreview()"></div><div class="field"><label>Text color</label><input id="badgeTextColor" type="color" value="${esc(b.textColor)}" oninput="badgePreview()"></div><div class="field"><label>Border color</label><input id="badgeBorder" type="color" value="${esc(b.border)}" oninput="badgePreview()"></div><div class="field"><label>Font</label><select id="badgeFont" onchange="badgePreview()">${['Inter','Arial','Verdana','Georgia','Trebuchet MS'].map(x=>`<option ${b.font===x?'selected':''}>${x}</option>`).join('')}</select></div></div><div id="badgePreview" class="badge-preview"></div><div class="modal-footer"><button class="btn" onclick="removeProductBadge()">Remove</button><button class="btn" onclick="openBadgeCredits()">Buy credits</button><button class="btn primary" onclick="saveProductBadge()">Apply Badge</button></div></div></div>`;badgePreview()};
+window.openBadgeDesigner=function(editId=''){const d=editId?product(editId):S.draft||{},b=d.badge||{text:'New',bg:'#e51b25',textColor:'#fff',border:'#e51b25',font:'Arial',shape:'corner-ribbon',texture:'gradient',vertical:'top',horizontal:'left'};window.badgeEditId=editId;document.getElementById('modalRoot').innerHTML=`<div class="modal-bg"><div class="modal"><button class="btn iconbtn close" onclick="closeModal()">×</button><h2>Product Badge Designer</h2><div class="badge-credit-bar"><div class="trust-item"><small>Free used</small><b>${usedFree()}/3</b></div><div class="trust-item"><small>Paid credits</small><b>${state().credits}/100</b></div><div class="trust-item"><small>Price</small><b>₹3 each</b></div><div class="trust-item"><small>Per product</small><b>1 badge</b></div></div><div class="field"><label>Search badge</label><input id="badgeSearch" placeholder="Search New, Limited, Trending..." oninput="filterBadgeLibrary(this.value)"></div><div id="badgeLibrary" class="badge-library">${BADGES.map(x=>`<button class="badge-choice ${x===b.text?'active':''}" data-name="${esc(x.toLowerCase())}" onclick="selectBadgeText('${esc(x)}')">${esc(x)}</button>`).join('')}</div><div class="form-grid badge-designer"><div class="field"><label>Badge text</label><input id="badgeText" maxlength="24" value="${esc(b.text)}" oninput="badgePreview()"></div><div class="field"><label>Shape</label><select id="badgeShape" onchange="badgePreview()">${['pill','rounded','square','ribbon'].map(x=>`<option ${b.shape===x?'selected':''}>${x}</option>`).join('')}</select></div><div class="field"><label>Background</label><input id="badgeBg" type="color" value="${esc(b.bg)}" oninput="badgePreview()"></div><div class="field"><label>Text color</label><input id="badgeTextColor" type="color" value="${esc(b.textColor)}" oninput="badgePreview()"></div><div class="field"><label>Border color</label><input id="badgeBorder" type="color" value="${esc(b.border)}" oninput="badgePreview()"></div><div class="field"><label>Font</label><select id="badgeFont" onchange="badgePreview()">${['Inter','Arial','Verdana','Georgia','Trebuchet MS'].map(x=>`<option ${b.font===x?'selected':''}>${x}</option>`).join('')}</select></div></div><div id="badgePreview" class="badge-preview"></div><div class="modal-footer"><button class="btn" onclick="removeProductBadge()">Remove</button><button class="btn" onclick="openBadgeCredits()">Buy credits</button><button class="btn primary" onclick="saveProductBadge()">Apply Badge</button></div></div></div>`;badgePreview()};
 window.filterBadgeLibrary=q=>document.querySelectorAll('.badge-choice').forEach(x=>x.hidden=!x.dataset.name.includes(String(q).toLowerCase()));window.selectBadgeText=t=>{document.getElementById('badgeText').value=t;document.querySelectorAll('.badge-choice').forEach(x=>x.classList.toggle('active',x.textContent===t));badgePreview()};window.badgePreview=()=>{const e=document.getElementById('badgePreview');if(e)e.innerHTML=`<span class="product-badge ${document.getElementById('badgeShape').value}" style="position:relative;top:auto;left:auto;--badge-bg:${document.getElementById('badgeBg').value};--badge-text:${document.getElementById('badgeTextColor').value};--badge-border:${document.getElementById('badgeBorder').value};--badge-font:${document.getElementById('badgeFont').value}">${esc(document.getElementById('badgeText').value||'Badge')}</span>`};
 function readBadge(){return{text:(document.getElementById('badgeText')?.value||'').trim(),shape:document.getElementById('badgeShape')?.value||'pill',bg:document.getElementById('badgeBg')?.value||'#5146e5',textColor:document.getElementById('badgeTextColor')?.value||'#fff',border:document.getElementById('badgeBorder')?.value||'#fff',font:document.getElementById('badgeFont')?.value||'Inter'}}
 window.saveProductBadge=function(){const id=window.badgeEditId,target=id?product(id):(S.draft=S.draft||{});if(!target)return;if(!readBadge().text)return toast('Badge text is required');if(id&&!target.badge&&!state().placedProductIds.includes(id)){if(!canNewBadge())return toast('Buy badge credits first');if(usedFree()>=3)state().credits--;state().placedProductIds.push(id)}target.badge=readBadge();save();closeModal();toast('Badge applied');render()};window.removeProductBadge=function(){const t=window.badgeEditId?product(window.badgeEditId):S.draft;if(t)delete t.badge;save();closeModal();render()};
@@ -5203,6 +5203,48 @@ RAZORPAY TEST SETUP
 3) Add RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET to Supabase Function Secrets.
 4) Never put RAZORPAY_KEY_SECRET in this HTML or GitHub.
 -->
+
+<style id="saleearn-corner-ribbon-fix">
+/* Premium corner ribbon badge */
+.product-card .thumb{overflow:hidden}
+.product-card .thumb>.product-badge.ribbon{
+  top:-3px!important;left:-46px!important;right:auto!important;bottom:auto!important;
+  width:154px!important;max-width:none!important;box-sizing:border-box;
+  padding:9px 12px 10px!important;margin:0!important;
+  border:0!important;border-radius:0!important;
+  text-align:center!important;white-space:nowrap!important;
+  line-height:1!important;font-size:11px!important;font-weight:950!important;
+  letter-spacing:.055em;
+  transform:rotate(-45deg);transform-origin:center center;
+  clip-path:polygon(0 0,100% 0,100% 78%,88% 100%,12% 100%,0 78%);
+  background:linear-gradient(135deg,#b40012 0%,#f21d2f 38%,#ff5a63 52%,#d10b1d 70%,#97000e 100%)!important;
+  color:#fff!important;
+  box-shadow:0 5px 12px rgba(90,0,8,.42),inset 0 1px 0 rgba(255,255,255,.48),inset 0 -2px 0 rgba(70,0,0,.24);
+  text-shadow:0 1px 2px rgba(70,0,0,.55);
+}
+.product-card .thumb>.product-badge.ribbon::before{
+  content:'';position:absolute;left:10%;right:10%;top:2px;height:2px;
+  background:linear-gradient(90deg,transparent,#fff9,transparent);opacity:.9;
+}
+.product-card .thumb>.product-badge.ribbon::after{
+  content:'';position:absolute;right:-1px;bottom:0;width:14px;height:14px;
+  background:linear-gradient(225deg,#72000a 0 49%,transparent 50%);
+}
+.badge-stage .product-badge.ribbon{
+  top:-3px!important;left:-46px!important;right:auto!important;bottom:auto!important;
+  width:154px!important;max-width:none!important;box-sizing:border-box;
+  padding:9px 12px 10px!important;border:0!important;border-radius:0!important;
+  text-align:center!important;white-space:nowrap!important;
+  transform:rotate(-45deg);transform-origin:center center;
+  clip-path:polygon(0 0,100% 0,100% 78%,88% 100%,12% 100%,0 78%);
+  background:linear-gradient(135deg,#b40012 0%,#f21d2f 38%,#ff5a63 52%,#d10b1d 70%,#97000e 100%)!important;
+  box-shadow:0 5px 12px rgba(90,0,8,.42),inset 0 1px 0 rgba(255,255,255,.48),inset 0 -2px 0 rgba(70,0,0,.24);
+  text-shadow:0 1px 2px rgba(70,0,0,.55);
+}
+.badge-stage .product-badge.ribbon::before{content:'';position:absolute;left:10%;right:10%;top:2px;height:2px;background:linear-gradient(90deg,transparent,#fff9,transparent)}
+.badge-stage .product-badge.ribbon::after{content:'';position:absolute;right:-1px;bottom:0;width:14px;height:14px;background:linear-gradient(225deg,#72000a 0 49%,transparent 50%)}
+</style>
+
 </body>
 <!-- Sale Earn v21: Badge Studio, Games, Messages, Verification & Final-Amount Finance -->
 <style id="saleearn-v21-style">
@@ -5237,8 +5279,8 @@ function v21ReadBadge(){return{text:(document.getElementById('badgeText')?.value
 function v21BadgeState(){const sid=currentSeller()?.id||S.currentUser?.sellerId||'guest';S.badgeLedgers=S.badgeLedgers||{};return S.badgeLedgers[sid]||(S.badgeLedgers[sid]={freeLimit:3,price:3,credits:0,placedProductIds:[],purchases:[]})}
 function v21UsedFree(){return Math.min(3,v21BadgeState().placedProductIds.length)}
 window.saveProductBadge=function(){const id=window.badgeEditId,target=id?product(id):(S.draft=S.draft||{}),b=v21ReadBadge();if(!target)return;if(!b.text)return toast('Badge text is required');const st=v21BadgeState();if(id&&!target.badge&&!st.placedProductIds.includes(id)){if(st.placedProductIds.length>=3&&st.credits<=0)return toast('Buy badge credits first');if(st.placedProductIds.length>=3)st.credits--;st.placedProductIds.push(id)}target.badge=b;save();closeModal();toast('Badge applied');render()};
-window.badgePreview=function(){const e=document.getElementById('badgePreview');if(!e)return;const b=v21ReadBadge();e.innerHTML=`<div class="badge-stage"><span class="product-badge ${esc(b.shape)} badge-${esc(b.vertical)} badge-${esc(b.horizontal)} texture-${esc(b.texture)}" style="--badge-bg:${esc(b.bg)};--badge-text:${esc(b.textColor)};--badge-border:${esc(b.border)};--badge-font:${esc(b.font)}">${esc(b.text||'Badge')}</span></div>`};
-window.openBadgeDesigner=function(editId=''){const d=editId?product(editId):S.draft||{},b={text:'New',bg:'#654ee8',textColor:'#fff',border:'#fff',font:'Inter',shape:'pill',texture:'gradient',vertical:'top',horizontal:'left',...(d.badge||{})};window.badgeEditId=editId;document.getElementById('modalRoot').innerHTML=`<div class="modal-bg"><div class="modal"><button class="btn iconbtn close" onclick="closeModal()">×</button><h2>Product Badge Studio</h2><p class="muted">Responsive image badge · one saved design is used in Step 1, Step 3 and product cards.</p><div class="badge-credit-bar"><div class="trust-item"><small>Free used</small><b>${v21UsedFree()}/3</b></div><div class="trust-item"><small>Credits</small><b>${v21BadgeState().credits}/100</b></div><div class="trust-item"><small>Extra</small><b>₹3</b></div><div class="trust-item"><small>Per product</small><b>1</b></div></div><div class="field"><label>Search badge</label><input id="badgeSearch" maxlength="30" placeholder="New, Limited, Trending" oninput="filterBadgeLibrary(this.value)"></div><div id="badgeLibrary" class="badge-library">${BADGES.map(x=>`<button class="badge-choice ${x===b.text?'active':''}" data-name="${esc(x.toLowerCase())}" onclick="selectBadgeText('${esc(x)}')">${esc(x)}</button>`).join('')}</div><div class="form-grid badge-designer"><div class="field"><label>Badge text</label><input id="badgeText" maxlength="24" value="${esc(b.text)}" oninput="badgePreview()"></div><div class="field"><label>Shape</label><select id="badgeShape" onchange="badgePreview()">${['pill','rounded','square','ribbon'].map(x=>`<option value="${x}" ${b.shape===x?'selected':''}>${x}</option>`).join('')}</select></div><div class="field"><label>Texture</label><select id="badgeTexture" onchange="badgePreview()">${['solid','gradient','stripes','dots','shine'].map(x=>`<option value="${x}" ${b.texture===x?'selected':''}>${x}</option>`).join('')}</select></div><div class="field"><label>Image position</label><select id="badgeVertical" onchange="badgePreview()"><option value="top" ${b.vertical==='top'?'selected':''}>Top of image</option><option value="bottom" ${b.vertical==='bottom'?'selected':''}>Bottom of image</option></select></div><div class="field"><label>Side</label><select id="badgeHorizontal" onchange="badgePreview()"><option value="left" ${b.horizontal==='left'?'selected':''}>Left</option><option value="right" ${b.horizontal==='right'?'selected':''}>Right</option></select></div><div class="field"><label>Font</label><select id="badgeFont" onchange="badgePreview()">${['Inter','Arial','Verdana','Georgia','Trebuchet MS'].map(x=>`<option ${b.font===x?'selected':''}>${x}</option>`).join('')}</select></div><div class="field"><label>Main colour</label><input id="badgeBg" type="color" value="${esc(b.bg)}" oninput="badgePreview()"></div><div class="field"><label>Text colour</label><input id="badgeTextColor" type="color" value="${esc(b.textColor)}" oninput="badgePreview()"></div><div class="field"><label>Border colour</label><input id="badgeBorder" type="color" value="${esc(b.border)}" oninput="badgePreview()"></div></div><div id="badgePreview" class="badge-form-preview"></div><div class="modal-footer"><button class="btn" onclick="removeProductBadge()">Remove</button><button class="btn" onclick="openBadgeCredits()">Buy credits</button><button class="btn primary" onclick="saveProductBadge()">Apply Badge</button></div></div></div>`;badgePreview()};
+window.badgePreview=function(){const e=document.getElementById('badgePreview');if(!e)return;const b=v21ReadBadge();const txt=b.shape==='corner-ribbon'?`<span class=\"corner-ribbon-text\">${esc(b.text||'New')}</span>`:esc(b.text||'Badge');e.innerHTML=`<div class="badge-stage"><span class="product-badge ${esc(b.shape)} badge-${esc(b.vertical)} badge-${esc(b.horizontal)} texture-${esc(b.texture)}" style="--badge-bg:${esc(b.bg)};--badge-text:${esc(b.textColor)};--badge-border:${esc(b.border)};--badge-font:${esc(b.font)}">${txt}</span></div>`};
+window.openBadgeDesigner=function(editId=''){const d=editId?product(editId):S.draft||{},b={text:'New',bg:'#e51d25',textColor:'#fff',border:'#e51d25',font:'Arial',shape:'corner-ribbon',texture:'gradient',vertical:'top',horizontal:'left',...(d.badge||{})};window.badgeEditId=editId;document.getElementById('modalRoot').innerHTML=`<div class="modal-bg"><div class="modal"><button class="btn iconbtn close" onclick="closeModal()">×</button><h2>Product Badge Studio</h2><p class="muted">Responsive image badge · one saved design is used in Step 1, Step 3 and product cards.</p><div class="badge-credit-bar"><div class="trust-item"><small>Free used</small><b>${v21UsedFree()}/3</b></div><div class="trust-item"><small>Credits</small><b>${v21BadgeState().credits}/100</b></div><div class="trust-item"><small>Extra</small><b>₹3</b></div><div class="trust-item"><small>Per product</small><b>1</b></div></div><div class="field"><label>Search badge</label><input id="badgeSearch" maxlength="30" placeholder="New, Limited, Trending" oninput="filterBadgeLibrary(this.value)"></div><div id="badgeLibrary" class="badge-library">${BADGES.map(x=>`<button class="badge-choice ${x===b.text?'active':''}" data-name="${esc(x.toLowerCase())}" onclick="selectBadgeText('${esc(x)}')">${esc(x)}</button>`).join('')}</div><div class="form-grid badge-designer"><div class="field"><label>Badge text</label><input id="badgeText" maxlength="24" value="${esc(b.text)}" oninput="badgePreview()"></div><div class="field"><label>Shape</label><select id="badgeShape" onchange="badgePreview()">${['pill','rounded','square','ribbon'].map(x=>`<option value="${x}" ${b.shape===x?'selected':''}>${x}</option>`).join('')}</select></div><div class="field"><label>Texture</label><select id="badgeTexture" onchange="badgePreview()">${['solid','gradient','stripes','dots','shine'].map(x=>`<option value="${x}" ${b.texture===x?'selected':''}>${x}</option>`).join('')}</select></div><div class="field"><label>Image position</label><select id="badgeVertical" onchange="badgePreview()"><option value="top" ${b.vertical==='top'?'selected':''}>Top of image</option><option value="bottom" ${b.vertical==='bottom'?'selected':''}>Bottom of image</option></select></div><div class="field"><label>Side</label><select id="badgeHorizontal" onchange="badgePreview()"><option value="left" ${b.horizontal==='left'?'selected':''}>Left</option><option value="right" ${b.horizontal==='right'?'selected':''}>Right</option></select></div><div class="field"><label>Font</label><select id="badgeFont" onchange="badgePreview()">${['Inter','Arial','Verdana','Georgia','Trebuchet MS'].map(x=>`<option ${b.font===x?'selected':''}>${x}</option>`).join('')}</select></div><div class="field"><label>Main colour</label><input id="badgeBg" type="color" value="${esc(b.bg)}" oninput="badgePreview()"></div><div class="field"><label>Text colour</label><input id="badgeTextColor" type="color" value="${esc(b.textColor)}" oninput="badgePreview()"></div><div class="field"><label>Border colour</label><input id="badgeBorder" type="color" value="${esc(b.border)}" oninput="badgePreview()"></div></div><div id="badgePreview" class="badge-form-preview"></div><div class="modal-footer"><button class="btn" onclick="removeProductBadge()">Remove</button><button class="btn" onclick="openBadgeCredits()">Buy credits</button><button class="btn primary" onclick="saveProductBadge()">Apply Badge</button></div></div></div>`;badgePreview()};
 const productCard20=productCard;productCard=function(p){const html=productCard20(p),tpl=document.createElement('template');tpl.innerHTML=html;const card=tpl.content.querySelector('.product-card'),badge=card?.querySelector(':scope > .product-badge'),thumbEl=card?.querySelector('.thumb'),b=p?.badge||{};if(badge&&thumbEl){badge.className='product-badge '+esc(b.shape||'pill')+' badge-'+(b.vertical==='bottom'?'bottom':'top')+' badge-'+(b.horizontal==='right'?'right':'left')+' texture-'+(['solid','gradient','stripes','dots','shine'].includes(b.texture)?b.texture:'gradient');badge.style.cssText='--badge-bg:'+esc(b.bg||'#5146e5')+';--badge-text:'+esc(b.textColor||'#fff')+';--badge-border:'+esc(b.border||'#fff')+';--badge-font:'+esc(b.font||'Inter');thumbEl.appendChild(badge)};return tpl.innerHTML};
 function v21InjectBadge(){const r=route();if(!/dashboard\/(add$|add3|edit\/)/.test(r))return;const form=document.querySelector('.dash-form');if(!form||form.querySelector('.badge-builder-entry'))return;const id=r.startsWith('dashboard/edit/')?r.split('/')[2]:'';const target=id?product(id):S.draft;const card=`<div class="dash-card badge-builder-entry"><h3>Product Badge</h3><p class="muted">Same badge preview is connected across Product Information and Pricing.</p><div class="badge-form-preview">${target?.badge?`<div class="badge-stage">${v21BadgeHTML(target)}</div>`:'<span class="muted">No badge selected</span>'}</div><button type="button" class="btn primary" onclick="openBadgeDesigner('${esc(id)}')">Choose / Design Badge</button></div>`;if(r.includes('add3')){const footer=form.querySelector('.modal-footer');footer?.insertAdjacentHTML('beforebegin',card)}else{const footer=form.querySelector('.modal-footer');footer?.insertAdjacentHTML('beforebegin',card)}};
 
@@ -5329,7 +5371,7 @@ window.removeProductBadge=function(){const id=window.badgeEditId||'',target=id?p
 const V22_BADGES=['New','Latest','Limited','Trending','Popular','Best Buy','For You','Hot Deal','Exclusive','Premium','Featured','Sale','Offer','Top Rated','Bestseller','Must Have','Staff Pick','Editors Pick','New Drop','Instant','Updated','Pro','Value','Bundle','Viral','Fresh','Recommended','Only Today','Few Left','Special'];
 window.v22FilterBadgeLibrary=function(q){q=String(q||'').toLowerCase();document.querySelectorAll('.badge-choice').forEach(x=>x.hidden=!x.dataset.name.includes(q))};
 window.v22SelectBadgeText=function(t){const e=document.getElementById('badgeText');if(e)e.value=t;document.querySelectorAll('.badge-choice').forEach(x=>x.classList.toggle('active',x.textContent===t));window.badgePreview?.()};
-window.openBadgeDesigner=function(id=''){const d=id?product(id):S.draft||{},b={text:'New',bg:'#654ee8',textColor:'#fff',border:'#fff',font:'Inter',shape:'pill',texture:'gradient',vertical:'top',horizontal:'left',...(d.badge||{})},st=v22Ledger();window.badgeEditId=id;document.getElementById('modalRoot').innerHTML=`<div class="modal-bg"><div class="modal"><button class="btn iconbtn close" onclick="closeModal()">×</button><h2>Product Badge Studio</h2><p class="muted">Choose, position, change or remove the badge safely.</p><div class="badge-credit-bar"><div class="trust-item"><small>Actions used</small><b>${st.actionsUsed}</b></div><div class="trust-item"><small>Free actions</small><b>${Math.min(3,st.actionsUsed)}/3</b></div><div class="trust-item"><small>Paid credits</small><b>${st.credits}/100</b></div><div class="trust-item"><small>Next action</small><b>${st.actionsUsed<3?'FREE':'₹3'}</b></div></div><div class="field"><label>Search badge</label><input id="badgeSearch" maxlength="30" placeholder="Search badge" oninput="v22FilterBadgeLibrary(this.value)"></div><div class="badge-library">${V22_BADGES.map(x=>`<button type="button" class="badge-choice ${x===b.text?'active':''}" data-name="${esc(x.toLowerCase())}" onclick="v22SelectBadgeText('${esc(x)}')">${esc(x)}</button>`).join('')}</div><div class="badge-quota-note"><b>Accounting:</b> adding or changing uses one action. Removing never restores quota or credit.</div><div class="form-grid badge-designer"><div class="field"><label>Badge text</label><input id="badgeText" maxlength="24" value="${esc(b.text)}" oninput="badgePreview()"></div><div class="field"><label>Shape</label><select id="badgeShape" onchange="badgePreview()">${['pill','rounded','square','ribbon'].map(x=>`<option value="${x}" ${b.shape===x?'selected':''}>${x}</option>`).join('')}</select></div><div class="field"><label>Texture</label><select id="badgeTexture" onchange="badgePreview()">${['solid','gradient','stripes','dots','shine'].map(x=>`<option value="${x}" ${b.texture===x?'selected':''}>${x}</option>`).join('')}</select></div><div class="field"><label>Position</label><select id="badgeVertical" onchange="badgePreview()"><option value="top" ${b.vertical==='top'?'selected':''}>Top</option><option value="bottom" ${b.vertical==='bottom'?'selected':''}>Bottom</option></select></div><div class="field"><label>Side</label><select id="badgeHorizontal" onchange="badgePreview()"><option value="left" ${b.horizontal==='left'?'selected':''}>Left</option><option value="right" ${b.horizontal==='right'?'selected':''}>Right</option></select></div><div class="field"><label>Font</label><select id="badgeFont" onchange="badgePreview()">${['Inter','Arial','Verdana','Georgia','Trebuchet MS'].map(x=>`<option ${b.font===x?'selected':''}>${x}</option>`).join('')}</select></div><div class="field"><label>Colour</label><input id="badgeBg" type="color" value="${esc(b.bg)}" oninput="badgePreview()"></div><div class="field"><label>Text colour</label><input id="badgeTextColor" type="color" value="${esc(b.textColor)}" oninput="badgePreview()"></div><div class="field"><label>Border</label><input id="badgeBorder" type="color" value="${esc(b.border)}" oninput="badgePreview()"></div></div><div id="badgePreview" class="badge-form-preview"></div><div class="modal-footer badge-action-row"><button class="btn danger" onclick="removeProductBadge()">Remove Badge</button><button class="btn" onclick="openBadgeCredits()">Buy Credits</button><button class="btn primary" onclick="saveProductBadge()">Apply / Change Badge</button></div></div></div>`;window.badgePreview?.()};
+window.openBadgeDesigner=function(id=''){const d=id?product(id):S.draft||{},b={text:'New',bg:'#d10b1d',textColor:'#fff',border:'#fff',font:'Inter',shape:'ribbon',texture:'gradient',vertical:'top',horizontal:'left',...(d.badge||{})},st=v22Ledger();window.badgeEditId=id;document.getElementById('modalRoot').innerHTML=`<div class="modal-bg"><div class="modal"><button class="btn iconbtn close" onclick="closeModal()">×</button><h2>Product Badge Studio</h2><p class="muted">Choose, position, change or remove the badge safely.</p><div class="badge-credit-bar"><div class="trust-item"><small>Actions used</small><b>${st.actionsUsed}</b></div><div class="trust-item"><small>Free actions</small><b>${Math.min(3,st.actionsUsed)}/3</b></div><div class="trust-item"><small>Paid credits</small><b>${st.credits}/100</b></div><div class="trust-item"><small>Next action</small><b>${st.actionsUsed<3?'FREE':'₹3'}</b></div></div><div class="field"><label>Search badge</label><input id="badgeSearch" maxlength="30" placeholder="Search badge" oninput="v22FilterBadgeLibrary(this.value)"></div><div class="badge-library">${V22_BADGES.map(x=>`<button type="button" class="badge-choice ${x===b.text?'active':''}" data-name="${esc(x.toLowerCase())}" onclick="v22SelectBadgeText('${esc(x)}')">${esc(x)}</button>`).join('')}</div><div class="badge-quota-note"><b>Accounting:</b> adding or changing uses one action. Removing never restores quota or credit.</div><div class="form-grid badge-designer"><div class="field"><label>Badge text</label><input id="badgeText" maxlength="24" value="${esc(b.text)}" oninput="badgePreview()"></div><div class="field"><label>Shape</label><select id="badgeShape" onchange="badgePreview()">${['pill','rounded','square','ribbon'].map(x=>`<option value="${x}" ${b.shape===x?'selected':''}>${x}</option>`).join('')}</select></div><div class="field"><label>Texture</label><select id="badgeTexture" onchange="badgePreview()">${['solid','gradient','stripes','dots','shine'].map(x=>`<option value="${x}" ${b.texture===x?'selected':''}>${x}</option>`).join('')}</select></div><div class="field"><label>Position</label><select id="badgeVertical" onchange="badgePreview()"><option value="top" ${b.vertical==='top'?'selected':''}>Top</option><option value="bottom" ${b.vertical==='bottom'?'selected':''}>Bottom</option></select></div><div class="field"><label>Side</label><select id="badgeHorizontal" onchange="badgePreview()"><option value="left" ${b.horizontal==='left'?'selected':''}>Left</option><option value="right" ${b.horizontal==='right'?'selected':''}>Right</option></select></div><div class="field"><label>Font</label><select id="badgeFont" onchange="badgePreview()">${['Inter','Arial','Verdana','Georgia','Trebuchet MS'].map(x=>`<option ${b.font===x?'selected':''}>${x}</option>`).join('')}</select></div><div class="field"><label>Colour</label><input id="badgeBg" type="color" value="${esc(b.bg)}" oninput="badgePreview()"></div><div class="field"><label>Text colour</label><input id="badgeTextColor" type="color" value="${esc(b.textColor)}" oninput="badgePreview()"></div><div class="field"><label>Border</label><input id="badgeBorder" type="color" value="${esc(b.border)}" oninput="badgePreview()"></div></div><div id="badgePreview" class="badge-form-preview"></div><div class="modal-footer badge-action-row"><button class="btn danger" onclick="removeProductBadge()">Remove Badge</button><button class="btn" onclick="openBadgeCredits()">Buy Credits</button><button class="btn primary" onclick="saveProductBadge()">Apply / Change Badge</button></div></div></div>`;window.badgePreview?.()};
 
 function catValue(){return document.getElementById('pfCategory')?.value||S.draft?.category||'Reel Bundle'}
 function catTags(cat){return CATS[cat]?.tags||[]}
@@ -5366,6 +5408,14 @@ const render21=window.render;window.render=function(){render21();setTimeout(post
 <style id="saleearn-v23-style">
 /* premium badge shapes */
 .product-badge.shape-pill{border-radius:999px}.product-badge.shape-soft{border-radius:12px}.product-badge.shape-square{border-radius:3px}.product-badge.shape-ticket{border-radius:4px 12px 4px 12px}.product-badge.shape-tag{border-radius:4px 14px 14px 4px;padding-left:14px}.product-badge.shape-shield{border-radius:10px 10px 18px 18px}.product-badge.shape-hex{border-radius:7px;clip-path:polygon(10% 0,90% 0,100% 50%,90% 100%,10% 100%,0 50%)}.product-badge.shape-slant{border-radius:5px;transform:skew(-8deg)}.product-badge.shape-capsule{border-radius:999px;padding-inline:18px}.product-badge.shape-ribbon{border-radius:4px 4px 4px 0}
+/* NEW premium corner-ribbon badge — polished red glossy sticker style */
+.product-badge.shape-corner-ribbon{top:0!important;left:0!important;right:auto!important;bottom:auto!important;width:126px;height:126px;padding:0!important;border:0!important;border-radius:0!important;display:block!important;overflow:visible;clip-path:polygon(0 0,100% 0,100% 14%,14% 100%,0 100%);box-shadow:none!important;transform:none!important;background:transparent!important;pointer-events:none}
+.product-badge.shape-corner-ribbon:before{content:'';position:absolute;left:0;top:0;width:120px;height:120px;clip-path:polygon(0 0,100% 0,100% 14%,14% 100%,0 100%);background:linear-gradient(135deg,#ff5b63 0%,#f2262f 24%,var(--badge-bg,#e51b25) 52%,#b80f17 78%,#78080d 100%);box-shadow:7px 8px 12px rgba(55,0,0,.30),inset 0 1px 1px rgba(255,255,255,.75),inset -3px -4px 8px rgba(70,0,0,.20)}
+.product-badge.shape-corner-ribbon:after{content:'';position:absolute;left:0;top:0;width:120px;height:120px;clip-path:polygon(0 0,100% 0,100% 14%,14% 100%,0 100%);background:linear-gradient(128deg,rgba(255,255,255,.62) 0 8%,transparent 9% 39%,rgba(255,255,255,.20) 40% 45%,transparent 46% 100%),linear-gradient(135deg,transparent 0 58%,rgba(67,0,0,.42) 59% 66%,transparent 67%);pointer-events:none}
+.product-badge.shape-corner-ribbon{color:var(--badge-text,#fff);font-family:var(--badge-font,Arial);font-size:0;font-weight:950;line-height:1;letter-spacing:.06em;text-transform:uppercase;text-align:center}
+.product-badge.shape-corner-ribbon .corner-ribbon-text{position:absolute;left:9px;top:31px;width:96px;display:block;transform:rotate(-45deg);transform-origin:center;font-size:21px;font-weight:950;line-height:1;letter-spacing:.045em;text-transform:uppercase;color:var(--badge-text,#fff);text-shadow:0 2px 3px rgba(65,0,0,.42),0 0 1px rgba(255,255,255,.28);z-index:3;white-space:nowrap}
+.product-badge.shape-corner-ribbon .corner-ribbon-text:after{content:'';position:absolute;left:8%;right:8%;bottom:-5px;height:2px;background:linear-gradient(90deg,transparent,rgba(255,255,255,.55),transparent);opacity:.7}
+.product-badge.shape-corner-ribbon.texture-solid,.product-badge.shape-corner-ribbon.texture-gradient,.product-badge.shape-corner-ribbon.texture-shine,.product-badge.shape-corner-ribbon.texture-stripes,.product-badge.shape-corner-ribbon.texture-dots,.product-badge.shape-corner-ribbon.texture-neon,.product-badge.shape-corner-ribbon.texture-glass,.product-badge.shape-corner-ribbon.texture-carbon,.product-badge.shape-corner-ribbon.texture-metal,.product-badge.shape-corner-ribbon.texture-hologram,.product-badge.shape-corner-ribbon.texture-luxury,.product-badge.shape-corner-ribbon.texture-wave{background:transparent!important;background-image:none!important}
 .product-badge.texture-neon{background:var(--badge-bg);box-shadow:0 0 7px color-mix(in srgb,var(--badge-bg) 80%,#fff),0 0 14px color-mix(in srgb,var(--badge-bg) 65%,transparent)}.product-badge.texture-glass{background:color-mix(in srgb,var(--badge-bg) 70%,transparent);backdrop-filter:blur(8px);box-shadow:inset 0 1px #ffffff70}.product-badge.texture-carbon{background-color:var(--badge-bg);background-image:linear-gradient(45deg,#0002 25%,transparent 25%,transparent 75%,#0002 75%),linear-gradient(45deg,#0002 25%,transparent 25%,transparent 75%,#0002 75%);background-size:7px 7px;background-position:0 0,3.5px 3.5px}.product-badge.texture-metal{background:linear-gradient(100deg,color-mix(in srgb,var(--badge-bg) 70%,#000),#fff9 44%,var(--badge-bg) 58%,color-mix(in srgb,var(--badge-bg) 65%,#000));box-shadow:inset 0 1px #fff8}.product-badge.texture-hologram{background:linear-gradient(120deg,var(--badge-bg),#48d9ff,#d06cff,#ffe168,var(--badge-bg));background-size:250% 250%;animation:v23Holo 5s ease infinite}.product-badge.texture-luxury{background:linear-gradient(145deg,#18120a,#7b5715 48%,#f0c35a 52%,#241a08);border-color:#ffe39a!important}.product-badge.texture-wave{background-color:var(--badge-bg);background-image:repeating-radial-gradient(ellipse at 0 100%,transparent 0 5px,#ffffff26 6px 7px,transparent 8px 12px)}@keyframes v23Holo{50%{background-position:100% 100%}}
 .badge-approved-note{padding:10px 12px;background:color-mix(in srgb,var(--brand) 10%,var(--card));border:1px solid color-mix(in srgb,var(--brand) 28%,var(--line));border-radius:12px;font-size:11px}.badge-approved-note b{display:block;margin-bottom:3px}.games-always-open{display:block!important;margin-bottom:8px}.games-always-open button.active{background:var(--brand)!important;color:#fff!important;border-color:var(--brand)!important}
 /* 5 appearance textures, graded separately for light and night */
@@ -5380,14 +5430,14 @@ const render21=window.render;window.render=function(){render21();setTimeout(post
 <script id="saleearn-v23-script">
 (function(){'use strict';
 const APPROVED=['New','Latest','Limited','Trending','Popular','Best Buy','For You','Hot Deal','Exclusive','Premium','Featured','Sale','Offer','Top Rated','Bestseller','Must Have','Staff Pick','Editors Pick','New Drop','Instant','Updated','Pro','Value','Bundle','Viral','Fresh','Recommended','Only Today','Few Left','Special'];
-const SHAPES=[['pill','Classic Pill'],['soft','Soft Rounded'],['square','Modern Square'],['ticket','Ticket'],['tag','Price Tag'],['shield','Shield'],['hex','Hexagon'],['slant','Slant'],['capsule','Capsule'],['ribbon','Ribbon']];
+const SHAPES=[['corner-ribbon','NEW Corner Ribbon'],['pill','Classic Pill'],['soft','Soft Rounded'],['square','Modern Square'],['ticket','Ticket'],['tag','Price Tag'],['shield','Shield'],['hex','Hexagon'],['slant','Slant'],['capsule','Capsule'],['ribbon','Ribbon']];
 const TEXTURES=[['solid','Solid'],['gradient','Gradient'],['shine','Glossy Shine'],['stripes','Fine Stripes'],['dots','Dotted'],['neon','Neon Glow'],['glass','Frosted Glass'],['carbon','Carbon'],['metal','Metallic'],['hologram','Holographic'],['luxury','Luxury Gold'],['wave','Wave Pattern']];
 const FONTS=[['Inter','Inter'],['Arial','Arial'],['Verdana','Verdana'],['Trebuchet MS','Trebuchet'],['Georgia','Georgia'],['Times New Roman','Times'],['Impact','Impact'],['Courier New','Courier'],['Comic Sans MS','Playful'],['Andale Mono','Mono'],['Noto Sans','Noto Sans'],['Liberation Sans','Liberation']];
 function opt(arr,v){return arr.map(([id,n])=>`<option value="${esc(id)}" ${v===id?'selected':''}>${esc(n)}</option>`).join('')}
 const oldOpen=window.openBadgeDesigner;
-window.openBadgeDesigner=function(id=''){oldOpen(id);const d=id?product(id):S.draft||{},b=d.badge||{};const text=document.getElementById('badgeText');if(text){text.readOnly=true;text.setAttribute('aria-readonly','true');text.title='Choose an approved badge above';text.oninput=null;text.closest('.field').insertAdjacentHTML('beforebegin','<div class="badge-approved-note"><b>Approved badge text only</b>Seller custom text type nahi kar sakta. Upar ki verified list se badge choose karein.</div>')};const sh=document.getElementById('badgeShape'),tx=document.getElementById('badgeTexture'),ft=document.getElementById('badgeFont');if(sh)sh.innerHTML=opt(SHAPES,b.shape||'pill');if(tx)tx.innerHTML=opt(TEXTURES,b.texture||'gradient');if(ft)ft.innerHTML=opt(FONTS,b.font||'Inter');window.badgePreview?.()};
+window.openBadgeDesigner=function(id=''){oldOpen(id);const d=id?product(id):S.draft||{},b={text:'New',bg:'#e51d25',textColor:'#fff',border:'#e51d25',font:'Arial',shape:'corner-ribbon',texture:'gradient',vertical:'top',horizontal:'left',...(d.badge||{})};const text=document.getElementById('badgeText');if(text){text.readOnly=true;text.setAttribute('aria-readonly','true');text.title='Choose an approved badge above';text.oninput=null;text.closest('.field').insertAdjacentHTML('beforebegin','<div class="badge-approved-note"><b>Approved badge text only</b>Seller custom text type nahi kar sakta. Upar ki verified list se badge choose karein.</div>')};const sh=document.getElementById('badgeShape'),tx=document.getElementById('badgeTexture'),ft=document.getElementById('badgeFont');if(sh){sh.innerHTML=opt(SHAPES,b.shape||'corner-ribbon');sh.value=b.shape||'corner-ribbon'}if(tx){tx.innerHTML=opt(TEXTURES,b.texture||'gradient');tx.value=b.texture||'gradient'}if(ft){ft.innerHTML=opt(FONTS,b.font||'Arial');ft.value=b.font||'Arial'}const bt=document.getElementById('badgeText'),bg=document.getElementById('badgeBg'),tc=document.getElementById('badgeTextColor'),br=document.getElementById('badgeBorder'),bv=document.getElementById('badgeVertical'),bh=document.getElementById('badgeHorizontal');if(bt)bt.value=b.text||'New';if(bg)bg.value=b.bg||'#e51d25';if(tc)tc.value=b.textColor||'#fff';if(br)br.value=b.border||'#e51d25';if(bv)bv.value=b.vertical||'top';if(bh)bh.value=b.horizontal||'left';window.badgePreview?.()};
 const oldSave=window.saveProductBadge;window.saveProductBadge=function(){const e=document.getElementById('badgeText');if(!e||!APPROVED.includes(e.value.trim())){if(e)e.value=APPROVED[0];window.badgePreview?.();return toast('Please choose approved badge text from the list')}return oldSave()};
-const oldCard=productCard;productCard=function(p){let h=oldCard(p);if(!p?.badge)return h;const allowed=TEXTURES.map(x=>x[0]),shape=SHAPES.map(x=>x[0]);const tpl=document.createElement('template');tpl.innerHTML=h;const b=tpl.content.querySelector('.product-badge');if(b){[...b.classList].filter(x=>x.startsWith('texture-')||x.startsWith('shape-')).forEach(x=>b.classList.remove(x));b.classList.add('texture-'+(allowed.includes(p.badge.texture)?p.badge.texture:'gradient'),'shape-'+(shape.includes(p.badge.shape)?p.badge.shape:'pill'))}return tpl.innerHTML};
+const oldCard=productCard;productCard=function(p){let h=oldCard(p);if(!p?.badge)return h;const allowed=TEXTURES.map(x=>x[0]),shape=SHAPES.map(x=>x[0]);const tpl=document.createElement('template');tpl.innerHTML=h;const b=tpl.content.querySelector('.product-badge');if(b){[...b.classList].filter(x=>x.startsWith('texture-')||x.startsWith('shape-')).forEach(x=>b.classList.remove(x));b.classList.add('texture-'+(allowed.includes(p.badge.texture)?p.badge.texture:'gradient'),'shape-'+(shape.includes(p.badge.shape)?p.badge.shape:'corner-ribbon'));if(p.badge.shape==='corner-ribbon'){b.innerHTML='<span class=\"corner-ribbon-text\">'+esc(p.badge.text||'New')+'</span>'}}return tpl.innerHTML};
 function gamesOpen(){if(route()!=='market')return;const side=document.querySelector('.sidebar-filter'),game=side?.querySelector('[data-game-filter]');if(!side||!game)return;let sub=game.nextElementSibling;if(!sub?.classList.contains('subcats')){sub=document.createElement('div');sub.className='subcats';game.after(sub)}sub.classList.add('games-always-open');const tags=['PC','Mobile','Action','Racing','Puzzle','Sports','Arcade','Strategy'];sub.innerHTML=`<button class="${window.marketCategory==='Games'&&(window.marketSub||'All')==='All'?'active':''}" onclick="event.stopPropagation();window.marketCategory='Games';window.marketSub='All';render()">All Games</button>${tags.map(t=>`<button class="${window.marketCategory==='Games'&&window.marketSub===t?'active':''}" onclick="event.stopPropagation();window.marketCategory='Games';window.marketSub='${t}';render()"># ${t}</button>`).join('')}`;game.onclick=()=>{window.marketCategory='Games';window.marketSub='All';render()}}
 const APPEAR=[['smooth','Smooth','Clean, distraction-free'],['aurora','Aurora Glow','Purple + aqua grading'],['mesh','Colour Mesh','Multi-colour soft mesh'],['grid','Studio Grid','Fine professional grid'],['waves','Soft Waves','Layered flowing pattern']];
 window.setAppearanceTexture=function(id){if(!APPEAR.some(x=>x[0]===id))id='smooth';if(S.currentUser){S.currentUser.appearanceTexture=id;save()}localStorage.setItem('saleEarnAppearanceTexture',id);applyAppearanceTexture();render();toast('Appearance texture applied')};
@@ -6206,8 +6256,21 @@ html:root[data-theme="dark"] .ad-premium{background:linear-gradient(135deg,#0f19
 }
 </style>
 
+<style id="featured-product-picker-style">
+.featured-product-picker{position:relative;width:100%}
+.featured-product-selectbar{width:100%;min-height:46px;padding:11px 14px;border:1px solid var(--border,#d9dce5);border-radius:12px;background:var(--card,#fff);color:var(--text,#172033);display:flex;align-items:center;justify-content:space-between;text-align:left;font:inherit;cursor:pointer;box-sizing:border-box}
+.featured-product-selectbar:hover{border-color:#8b80ef}
+.featured-product-chevron{font-size:18px;line-height:1;opacity:.65;margin-left:10px}
+.featured-product-menu{position:absolute;z-index:1000;left:0;right:0;top:calc(100% + 6px);background:var(--card,#fff);border:1px solid var(--border,#d9dce5);border-radius:12px;box-shadow:0 14px 35px rgba(0,0,0,.14);overflow:hidden}
+.featured-product-menu-head{padding:11px 14px;font-weight:700;border-bottom:1px solid var(--border,#e5e7eb)}
+.featured-product-options{max-height:260px;overflow:auto;padding:6px}
+.featured-product-option{display:flex;align-items:center;gap:10px;padding:10px 9px;border-radius:8px;cursor:pointer;font-weight:500}
+.featured-product-option:hover{background:rgba(81,70,229,.08)}
+.featured-product-option input{width:17px;height:17px;flex:0 0 auto}
+.featured-product-option span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+</style>
 <script id="saleearn-featured-product-select">
-/* Featured products: seller can select products from their own catalog. */
+/* Featured products: seller selects from a click-to-open product picker. */
 (function(){
   const previousDashStoreSettings = window.dashStoreSettings;
   window.dashStoreSettings = function(){
@@ -6217,9 +6280,15 @@ html:root[data-theme="dark"] .ad-premium{background:linear-gradient(135deg,#0f19
     const t = storeTheme(s.id);
     const ownProducts = (S.products||[]).filter(p=>String(p.sellerId)===String(s.id));
     const selected = new Set((t.featuredProducts||[]).map(String));
-    const options = ownProducts.length
-      ? ownProducts.map(p=>`<option value="${esc(p.id)}" ${selected.has(String(p.id))?'selected':''}>${esc(p.title||p.id)}${p.price!=null?' · '+money(p.price):''}</option>`).join('')
-      : '<option value="" disabled>No products available</option>';
+
+    const options = ownProducts.length ? ownProducts.map(p=>`
+      <label class="featured-product-option">
+        <input type="checkbox" class="featured-product-check" value="${esc(p.id)}" ${selected.has(String(p.id))?'checked':''}>
+        <span>${esc(p.title||p.id)}${p.price!=null?' · '+money(p.price):''}</span>
+      </label>`).join('') : '<div class="muted" style="padding:10px">No products available</div>';
+
+    const selectedNames = ownProducts.filter(p=>selected.has(String(p.id))).map(p=>p.title||p.id);
+    const displayText = selectedNames.length ? selectedNames.join(', ') : 'Select products';
 
     const tpl = document.createElement('template');
     tpl.innerHTML = html;
@@ -6227,10 +6296,19 @@ html:root[data-theme="dark"] .ad-premium{background:linear-gradient(135deg,#0f19
     if(input){
       const field = input.closest('.field');
       if(field){
-        field.outerHTML = `<div class="field">
+        field.outerHTML = `<div class="field featured-product-picker-field">
           <label>Featured Products</label>
-          <select id="v19Featured" multiple size="${Math.min(7,Math.max(3,ownProducts.length||3))}" style="min-height:140px">${options}</select>
-          <small class="muted">Select one or more of your products to feature on your public store. Hold Ctrl/Cmd to select multiple.</small>
+          <input type="hidden" id="v19Featured" value="${esc([...selected].join(','))}">
+          <div class="featured-product-picker" id="featuredProductPicker">
+            <button type="button" class="featured-product-selectbar" id="featuredProductSelectBar" aria-expanded="false">
+              <span id="featuredProductSelectText">${esc(displayText)}</span><span class="featured-product-chevron">⌄</span>
+            </button>
+            <div class="featured-product-menu" id="featuredProductMenu" hidden>
+              <div class="featured-product-menu-head">Select products</div>
+              <div class="featured-product-options">${options}</div>
+            </div>
+          </div>
+          <small class="muted">Click the bar to choose one or more of your products.</small>
         </div>`;
       }
     }
@@ -6239,27 +6317,55 @@ html:root[data-theme="dark"] .ad-premium{background:linear-gradient(135deg,#0f19
 
   const previousSaveV19Store = window.saveV19Store;
   window.saveV19Store = function(){
-    const el = document.getElementById('v19Featured');
-    if(!el) return previousSaveV19Store();
-    const selected = [...el.selectedOptions].map(o=>o.value).filter(Boolean);
+    const hidden = document.getElementById('v19Featured');
+    if(!hidden) return previousSaveV19Store();
+    const checks = [...document.querySelectorAll('#featuredProductPicker .featured-product-check:checked')];
+    const selected = checks.map(x=>x.value).filter(Boolean);
     const s = currentSeller();
     if(!s) return previousSaveV19Store();
     const ownIds = new Set((S.products||[]).filter(p=>String(p.sellerId)===String(s.id)).map(p=>String(p.id)));
     const featured = selected.filter(id=>ownIds.has(String(id)));
-
-    const old = previousSaveV19Store;
-    const originalValue = el.value;
-    Object.defineProperty(el, 'value', {
-      configurable:true,
-      get(){ return featured.join(','); },
-      set(v){}
-    });
-    try {
-      return old();
-    } finally {
-      try { Object.defineProperty(el, 'value', {configurable:true,writable:true,value:originalValue}); } catch(e){}
-    }
+    hidden.value = featured.join(',');
+    return previousSaveV19Store();
   };
+
+  function bindPicker(){
+    const picker=document.getElementById('featuredProductPicker');
+    const bar=document.getElementById('featuredProductSelectBar');
+    const menu=document.getElementById('featuredProductMenu');
+    const text=document.getElementById('featuredProductSelectText');
+    const hidden=document.getElementById('v19Featured');
+    if(!picker||!bar||!menu||!text||!hidden||bar.dataset.bound==='1') return;
+    bar.dataset.bound='1';
+
+    const update=()=>{
+      const checked=[...picker.querySelectorAll('.featured-product-check:checked')];
+      const names=checked.map(x=>x.closest('label')?.querySelector('span')?.textContent?.trim()||'').filter(Boolean);
+      hidden.value=checked.map(x=>x.value).join(',');
+      text.textContent=names.length ? names.join(', ') : 'Select products';
+    };
+    bar.addEventListener('click',()=>{
+      const open=!menu.hidden;
+      menu.hidden=open;
+      bar.setAttribute('aria-expanded',String(!open));
+    });
+    picker.querySelectorAll('.featured-product-check').forEach(c=>c.addEventListener('change',update));
+    document.addEventListener('click',e=>{
+      if(!picker.contains(e.target) && !menu.hidden){
+        menu.hidden=true;
+        bar.setAttribute('aria-expanded','false');
+      }
+    });
+    update();
+  }
+
+  const oldRender=window.render;
+  window.render=function(){
+    const r=oldRender.apply(this,arguments);
+    setTimeout(bindPicker,0);
+    return r;
+  };
+  setTimeout(bindPicker,0);
 })();
 </script>
 
