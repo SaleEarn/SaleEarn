@@ -5292,4 +5292,130 @@ const oldRender=window.render;window.render=function(){oldRender();applyAppearan
 applyAppearanceTexture();
 })();
 </script>
+
+<style data-saleearn-product-check="v1">
+.product-check-badge{display:inline-flex;align-items:center;gap:4px;margin:3px 3px 0 0;padding:5px 9px;border-radius:999px;font-size:10px;font-weight:900;line-height:1;border:1px solid transparent}
+.product-check-badge.checked{background:#fff4cc;color:#966400;border-color:#ffe09a}
+.product-check-badge.verified{background:#e8f9f1;color:#12835d;border-color:#bfead5}
+.pc-tabs{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 18px}.pc-tab{border:1px solid var(--line);background:var(--surface);color:var(--text);padding:10px 15px;border-radius:12px;font-weight:900;cursor:pointer}.pc-tab.active{background:var(--brand);color:#fff;border-color:var(--brand)}.pc-tab span{display:inline-flex;min-width:22px;justify-content:center;margin-left:5px;padding:3px 6px;border-radius:999px;background:#ffffff44;font-size:11px}
+.pc-toolbar{display:grid;grid-template-columns:minmax(190px,1fr) 190px;gap:10px;margin:14px 0}.pc-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.pc-product{border:1px solid var(--line);border-radius:16px;background:var(--surface);padding:13px;display:grid;grid-template-columns:94px 1fr;gap:13px}.pc-product-image{width:94px;height:86px;border-radius:12px;overflow:hidden;background:var(--soft);display:grid;place-items:center;font-size:29px}.pc-product-image img{width:100%;height:100%;object-fit:cover}.pc-product-main{min-width:0}.pc-product-main h3{margin:0 0 5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.pc-meta{font-size:11px;color:var(--muted);line-height:1.55}.pc-badges{min-height:25px;margin:6px 0}.pc-actions{display:flex;gap:7px;flex-wrap:wrap;margin-top:8px}.pc-actions .btn{padding:8px 10px;font-size:11px}.pc-empty{padding:45px 20px;text-align:center;border:1px dashed var(--line);border-radius:15px;color:var(--muted);grid-column:1/-1}
+@media(max-width:850px){.pc-grid{grid-template-columns:1fr}}@media(max-width:600px){.pc-toolbar{grid-template-columns:1fr}.pc-product{grid-template-columns:72px 1fr}.pc-product-image{width:72px;height:70px}}
+</style>
+<script data-saleearn-product-check="v1">
+(function(){
+  'use strict';
+  const PC_CHECKED='adminChecked';
+  const PC_VERIFIED='adminVerified';
+  const pcProducts=()=>Array.isArray(S.products)?S.products:[];
+  const pcChecked=p=>p?.[PC_CHECKED]===true;
+  const pcVerified=p=>p?.[PC_VERIFIED]===true;
+  const pcBadgeMarkup=p=>pcVerified(p)?'<span class="product-check-badge verified">✓ Verified</span>':pcChecked(p)?'<span class="product-check-badge checked">✓ Checked</span>':'';
+  const pcEscId=id=>esc(encodeURIComponent(String(id||'')));
+
+  window.adminProductCheckAction=function(id,kind){
+    if(!adminOnly())return;
+    const p=product(id);if(!p)return toast('Product not found');
+    if(kind==='checked'){
+      if(pcChecked(p))return toast('Product already checked');
+      p[PC_CHECKED]=true;
+      adminAudit('Checked product',p.id,{productId:p.id,category:p.category||null});
+      save();toast('Product added to Checked');
+    }else if(kind==='verified'){
+      if(pcVerified(p))return toast('Product already verified');
+      p[PC_CHECKED]=true;
+      p[PC_VERIFIED]=true;
+      adminAudit('Verified product',p.id,{productId:p.id,category:p.category||null});
+      save();toast('Product added to Verified');
+    }
+    render();
+  };
+
+  function pcCategoryOptions(selected){
+    const cats=[...new Set(pcProducts().map(p=>String(p.category||'Other').trim()||'Other'))].sort((a,b)=>a.localeCompare(b));
+    return '<option value="ALL">All categories</option>'+cats.map(c=>`<option value="${esc(c)}" ${selected===c?'selected':''}>${esc(c)}</option>`).join('');
+  }
+  function pcProductCard(p){
+    const checked=pcChecked(p),verified=pcVerified(p),sellerData=seller(p.sellerId);
+    return `<article class="pc-product"><div class="pc-product-image">${p.image?`<img src="${esc(p.image)}" alt="${esc(p.title||'Product')}">`:'🧩'}</div><div class="pc-product-main"><h3 title="${esc(p.title||'Untitled product')}">${esc(p.title||'Untitled product')}</h3><div class="pc-meta">Category: <b>${esc(p.category||'Other')}</b><br>Seller: @${esc(p.sellerId||'-')} · ${esc(sellerData.name||'Seller')}<br>Price: ${money(p.price||0)} · Sales: ${productSales(p.id)}</div><div class="pc-badges">${pcBadgeMarkup(p)}</div><div class="pc-actions"><button class="btn" onclick="adminNav('product/${pcEscId(p.id)}')">Open Product</button><button class="btn ${checked?'primary':''}" ${checked?'disabled':''} onclick="adminProductCheckAction('${pcEscId(p.id)}','checked')">${checked?'Checked':'Check'}</button><button class="btn ${verified?'primary':''}" ${verified?'disabled':''} onclick="adminProductCheckAction('${pcEscId(p.id)}','verified')">${verified?'Verified':'Verify'}</button></div></div></article>`;
+  }
+  function pcCounts(){const all=pcProducts();return {total:all.length,checked:all.filter(pcChecked).length,verified:all.filter(pcVerified).length};}
+  function pcSidebar(){
+    let side=adminSidebar('product-check');
+    const link='<button class="admin-link active" onclick="adminNav(\'product-check\')"><span>✓</span><span class="label">Product Check</span></button>';
+    const marker='<div class="admin-nav-title">System</div>';
+    if(!side.includes('Product Check'))side=side.replace(marker,link+marker);
+    return side;
+  }
+  function pcPage(){
+    if(!adminOnly())return `${header()}<main class="page"></main>`;
+    const counts=pcCounts();
+    const tab=window.pcTab||'total',cat=window.pcCategory||'ALL',q=String(window.pcQuery||'').trim().toLowerCase();
+    let rows=pcProducts();
+    if(tab==='checked')rows=rows.filter(pcChecked);
+    if(tab==='verified')rows=rows.filter(pcVerified);
+    if(cat!=='ALL')rows=rows.filter(p=>String(p.category||'Other')===cat);
+    if(q)rows=rows.filter(p=>`${p.title||''} ${p.id||''} ${p.sellerId||''} ${p.category||''}`.toLowerCase().includes(q));
+    const tabs=[['total','Total',counts.total],['checked','Checked',counts.checked],['verified','Verified',counts.verified]];
+    const content=`<div class="admin-card"><div class="section-head"><div><h2>Product Check</h2><div class="sub">Review every product and mark it Checked or Verified. Verified products are also Checked.</div></div><span class="admin-pill success">${counts.total} Products</span></div><div class="pc-tabs">${tabs.map(([id,label,count])=>`<button class="pc-tab ${tab===id?'active':''}" onclick="window.pcTab='${id}';render()">${label}<span>${count}</span></button>`).join('')}</div><div class="pc-toolbar"><input class="input admin-search" value="${esc(window.pcQuery||'')}" placeholder="Search product, seller or ID" oninput="window.pcQuery=this.value;render()"><select class="input" onchange="window.pcCategory=this.value;render()">${pcCategoryOptions(cat)}</select></div><div class="pc-grid">${rows.map(pcProductCard).join('')||'<div class="pc-empty">No products found in this view.</div>'}</div></div>`;
+    return `<div class="admin-shell">${pcSidebar()}<section class="admin-main">${adminTop('Product Check')}<div class="admin-content">${content}</div></section></div>`;
+  }
+
+  function pcDetailWithControls(id){
+    const p=product(id),html=adminProductDetail(id);
+    if(!p)return html;
+    const controls=`<div class="admin-card" style="margin-bottom:18px"><div class="section-head"><div><h2>Product Review</h2><div class="sub">Admin review status is shown on the marketplace product card.</div></div><div>${pcBadgeMarkup(p)||'<span class="admin-pill warn">Not checked</span>'}</div></div><div class="admin-actions"><button class="btn" ${pcChecked(p)?'disabled':''} onclick="adminProductCheckAction('${pcEscId(p.id)}','checked')">${pcChecked(p)?'✓ Checked':'Mark Checked'}</button><button class="btn primary" ${pcVerified(p)?'disabled':''} onclick="adminProductCheckAction('${pcEscId(p.id)}','verified')">${pcVerified(p)?'✓ Verified':'Mark Verified'}</button><button class="btn" onclick="adminNav('product-check')">Back to Product Check</button></div></div>`;
+    return html.replace('<div class="admin-content">',`<div class="admin-content">${controls}`);
+  }
+
+  const pcOriginalProductCard=productCard;
+  productCard=function(p){
+    let html=pcOriginalProductCard(p);
+    const badge=pcBadgeMarkup(p);if(!badge)return html;
+    const tpl=document.createElement('template');tpl.innerHTML=html;
+    const tagWrap=tpl.content.querySelector('.body > div');
+    if(tagWrap)tagWrap.insertAdjacentHTML('beforeend',badge);
+    return tpl.innerHTML;
+  };
+
+  const pcOriginalRender=window.render;
+  window.render=function(){
+    const r=route();
+    if(r==='admin/product-check'){
+      document.getElementById('app').innerHTML=pcPage();
+      applyPlatformConfig();
+      if(typeof bindAdminScroll==='function')bindAdminScroll();
+      return;
+    }
+    if(r.startsWith('admin/product/')){
+      const id=decodeURIComponent(r.split('/')[2]||'');
+      document.getElementById('app').innerHTML=pcDetailWithControls(id);
+      applyPlatformConfig();
+      if(typeof bindAdminScroll==='function')bindAdminScroll();
+      return;
+    }
+    pcOriginalRender();
+  };
+
+  // Re-render the current route once so marketplace badges appear immediately.
+  setTimeout(()=>window.render(),0);
+})();
+</script>
+
+
+<style data-saleearn-product-manager-fix="v1">
+/* Product manager: give the title and metadata real width; keep actions below. */
+.pm-list{grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;align-items:start}
+.pm-card{grid-template-columns:24px 100px minmax(0,1fr);grid-template-rows:auto auto;gap:11px 13px;align-items:start;min-width:0;padding:14px}
+.pm-check{grid-column:1;grid-row:1 / span 2;padding-top:3px}
+.pm-image{grid-column:2;grid-row:1;width:100px;height:82px;min-width:0;border-radius:12px}
+.pm-info{grid-column:3;grid-row:1;min-width:0;padding-right:2px}
+.pm-info h3{font-size:17px;line-height:1.18;margin:5px 0 6px;white-space:normal;overflow-wrap:anywhere;word-break:normal;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:4;overflow:hidden}
+.pm-top{gap:7px;min-width:0}.pm-top .small{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pm-actions{grid-column:2 / -1;grid-row:2;display:flex;justify-content:flex-start;align-items:center;gap:7px;min-width:0;margin-top:1px}
+.pm-actions .btn{padding:8px 12px;white-space:nowrap}
+@media(max-width:1050px){.pm-list{grid-template-columns:1fr}}
+@media(min-width:1051px){.pm-list.list-view{grid-template-columns:1fr}.pm-list.list-view .pm-card{grid-template-columns:24px 100px minmax(0,1fr) auto;grid-template-rows:auto;align-items:center}.pm-list.list-view .pm-check{grid-row:1}.pm-list.list-view .pm-actions{grid-column:4;grid-row:1;justify-content:flex-end}.pm-list.list-view .pm-info{grid-row:1}}
+@media(max-width:760px){.pm-card{grid-template-columns:22px 78px minmax(0,1fr);gap:9px}.pm-image{width:78px;height:72px}.pm-info h3{font-size:15px;-webkit-line-clamp:4}.pm-actions{grid-column:2 / -1}.pm-actions .btn{padding:7px 9px;font-size:11px}}
+</style>
+
 </html>
