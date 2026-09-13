@@ -2656,26 +2656,38 @@ async function servicePayOnline(){
    onVerified:async(response)=>{
      const verified={...x,gatewayPaymentId:response.razorpay_payment_id,razorpayOrderId:response.razorpay_order_id,paymentVerified:true};
      const activated=applyServicePayment(verified,"RAZORPAY_TEST");
-     if(verified.kind==="subscription"){
-       const sellerObj=currentSeller();
-       const requestedPlan=String(verified.meta?.plan||sellerObj?.plan||"FREE").toUpperCase();
-       if(sellerObj && requestedPlan!=="FREE"){
+     const sellerObj=currentSeller();
+     if(verified.kind==="subscription" && sellerObj){
+       const requestedPlan=String(verified.meta?.plan||sellerObj.plan||"FREE").toUpperCase();
+       if(requestedPlan!=="FREE"){
          sellerObj.plan=requestedPlan;
          sellerObj.subscriptionStatus="ACTIVE";
-         if(!Array.isArray(S.subscriptions))S.subscriptions=[];
+         sellerObj.subscriptionCancelledAt=null;
+         sellerObj.planFeaturesDeactivatedAt=null;
+         S.subscriptions=S.subscriptions||[];
          const gatewayId=String(verified.gatewayPaymentId||"");
-         let existing=gatewayId?S.subscriptions.find(z=>String(z.gatewayPaymentId||"")===gatewayId):null;
-         if(!existing){
+         let sub=gatewayId?S.subscriptions.find(z=>String(z.gatewayPaymentId||"")===gatewayId):null;
+         if(!sub){
            const now=nowISO(),end=new Date(Date.now()+SUBSCRIPTION_DURATION_MS).toISOString();
-           existing={id:uid("sub"),sellerId:sellerObj.id,plan:requestedPlan,amount:Number(verified.amount||0),discount:Number(verified.meta?.discount||0),paymentSource:"RAZORPAY_TEST",paymentStatus:"SUCCESS",paymentVerified:true,gatewayPaymentId:gatewayId||null,date:now,startDate:now,endDate:end};
-           S.subscriptions.unshift(existing);
+           sub={id:uid("sub"),sellerId:sellerObj.id,plan:requestedPlan,amount:Number(verified.amount||0),discount:Number(verified.meta?.discount||0),paymentSource:"RAZORPAY_TEST",paymentStatus:"SUCCESS",paymentVerified:true,status:"ACTIVE",gatewayPaymentId:gatewayId||null,date:now,startDate:now,endDate:end};
+           S.subscriptions.unshift(sub);
+         }else{
+           sub.sellerId=sellerObj.id;sub.plan=requestedPlan;sub.paymentSource=sub.paymentSource||"RAZORPAY_TEST";sub.paymentStatus="SUCCESS";sub.paymentVerified=true;sub.status="ACTIVE";
+           if(!sub.startDate)sub.startDate=sub.date||nowISO();
+           if(!sub.endDate)sub.endDate=new Date(new Date(sub.startDate).getTime()+SUBSCRIPTION_DURATION_MS).toISOString();
          }
-         sellerObj.activeSubscriptionId=existing.id;
-         sellerObj.lastSubscription={plan:requestedPlan,amount:Number(existing.amount||verified.amount||0),date:existing.date||nowISO(),discount:Number(existing.discount||0)};
-         try{if(typeof syncSubscriptionPlans==='function')syncSubscriptionPlans()}catch(e){console.warn("Subscription sync after payment failed",e)}
+         sellerObj.activeSubscriptionId=sub.id;
+         sellerObj.lastSubscription={plan:requestedPlan,amount:Number(sub.amount||verified.amount||0),date:sub.date||nowISO(),discount:Number(sub.discount||verified.meta?.discount||0)};
+         try{if(typeof syncSubscriptionPlans==="function")syncSubscriptionPlans()}catch(e){console.warn("Subscription sync after Razorpay payment failed",e)}
        }
      }
-     if(!activated && verified.kind!=="subscription") throw new Error("Payment activation failed");
+     if(verified.kind==="ad"){
+       const ads=S.ads=S.ads||[];
+       const gatewayId=String(verified.gatewayPaymentId||"");
+       const ad=gatewayId?ads.find(a=>String(a.gatewayPaymentId||"")===gatewayId):null;
+       if(ad){ad.status="ACTIVE";ad.paymentStatus="SUCCESS";ad.paymentVerified=true;ad.paymentSource="RAZORPAY_TEST"}
+     }
+     if(!activated && verified.kind!=="subscription" && verified.kind!=="ad")throw new Error("Payment activation failed");
      window.serviceOnline=null;
      window.pendingService=null;
      save();
@@ -2740,7 +2752,7 @@ function applyServicePayment(x,source){
    S.subscriptions=S.subscriptions||[];
    const subDate=nowISO(),subEnd=new Date(new Date(subDate).getTime()+SUBSCRIPTION_DURATION_MS).toISOString();
    if(x.gatewayPaymentId && S.subscriptions.some(z=>z.gatewayPaymentId===x.gatewayPaymentId))return false;
-   S.subscriptions.unshift({id:uid("sub"),sellerId:currentSeller().id,plan:x.meta.plan,amount:x.amount,discount:x.meta.discount||0,paymentSource:source,paymentStatus:"SUCCESS",paymentVerified:true,gatewayPaymentId:x.gatewayPaymentId||null,date:subDate,startDate:subDate,endDate:subEnd});
+   S.subscriptions.unshift({id:uid("sub"),sellerId:currentSeller().id,plan:x.meta.plan,amount:x.amount,discount:x.meta.discount||0,paymentSource:source,paymentStatus:"SUCCESS",paymentVerified:true,status:"ACTIVE",gatewayPaymentId:x.gatewayPaymentId||null,date:subDate,startDate:subDate,endDate:subEnd});
    currentSeller().plan=x.meta.plan;currentSeller().lastSubscription={plan:x.meta.plan,amount:x.amount,date:subDate,discount:x.meta.discount||0};
    const usedReferral=S.settings.referralUsedBy?.[S.currentUser?.id];
    if(usedReferral&&usedReferral.sellerId!==currentSeller().id){
@@ -6142,6 +6154,26 @@ html:root[data-theme="dark"] .ad-premium{background:linear-gradient(135deg,#0f19
   const upper=v=>String(v||'').trim().toUpperCase();
   const planConfig=()=>{try{return ensurePlatformConfig()}catch{return S.platformConfig||{plans:[]}}};
   const planById=id=>{const key=upper(id||'FREE');return (planConfig().plans||[]).find(x=>upper(x.id)===key)||{id:'FREE',name:'FREE',uploadLimit:10,ads:false,analytics:false,referrals:true,advanced:false,prioritySupport:false,verified:false,commissionPct:20}};
+  function repairPaidSubscriptionHistory(){
+    const now=Date.now(),rows=Array.isArray(S.subscriptions)?S.subscriptions:[];
+    rows.forEach(x=>{
+      const source=upper(x.paymentSource||'');
+      const trustedSource=source==='RAZORPAY_TEST'||source==='ONLINE_TEST'||source==='BALANCE';
+      const status=upper(x.status||'');
+      const start=validDate(x.startDate||x.date),end=validDate(x.endDate);
+      if(!trustedSource||x.paymentVerified===false||cancelledStates.has(status)||!Number.isFinite(start)||!Number.isFinite(end)||start>now||now>=end||!x.plan)return;
+      x.paymentStatus='SUCCESS';x.paymentVerified=true;x.status='ACTIVE';
+      const sellerObj=S.sellers?.[x.sellerId];
+      if(sellerObj){
+        sellerObj.plan=upper(x.plan)||'FREE';
+        sellerObj.subscriptionStatus='ACTIVE';
+        sellerObj.subscriptionCancelledAt=null;
+        sellerObj.planFeaturesDeactivatedAt=null;
+        sellerObj.activeSubscriptionId=x.id;
+        sellerObj.lastSubscription={plan:sellerObj.plan,amount:Number(x.amount||0),date:x.date||x.startDate||nowISO(),discount:Number(x.discount||0)};
+      }
+    });
+  }
   const validDate=v=>{const t=new Date(v||0).getTime();return Number.isFinite(t)?t:NaN};
   const subscriptionEnd=x=>{const st=validDate(x?.startDate||x?.date),end=validDate(x?.endDate);return Number.isFinite(end)?end:(Number.isFinite(st)?st+SUBSCRIPTION_DURATION_MS:NaN)};
   const subscriptionActive=(x,t)=>{
@@ -6235,17 +6267,17 @@ html:root[data-theme="dark"] .ad-premium{background:linear-gradient(135deg,#0f19
   if(priorCreateAd)window.createAd=function(){if(!guardPlanFeature('ads','Ads are inactive on the FREE plan. Buy a plan to use Ads.'))return;return priorCreateAd.apply(this,arguments)};
   const priorDashAds=window.dashAds;
   if(priorDashAds)window.dashAds=function(){
-    const sid=typeof currentSeller==='function'?currentSeller()?.id:null;
-    if(sid&&!window.sellerPlanFeatureActive(sid,'ads'))return dashShell('ads','<div class="dash-card"><h2>Ads inactive</h2><p class="muted">Your subscription was cancelled. Existing products and sales remain safe, but plan Ads features are inactive until you buy a plan again.</p><button class="btn primary" onclick="go(\'dashboard/subscription\')">View Plans</button></div>');
     return priorDashAds.apply(this,arguments);
   };
 
   // Sync once on every render so an expired/cancelled plan cannot keep premium state.
   const priorRender=window.render;
   if(priorRender)window.render=function(){
+    try{repairPaidSubscriptionHistory()}catch{}
     try{if(typeof syncSubscriptionPlans==='function')syncSubscriptionPlans()}catch{}
     return priorRender.apply(this,arguments);
   };
+  try{repairPaidSubscriptionHistory()}catch{}
   try{if(typeof syncSubscriptionPlans==='function')syncSubscriptionPlans()}catch{}
 })();
 </script>
@@ -6288,16 +6320,31 @@ html:root[data-theme="dark"] .ad-premium{background:linear-gradient(135deg,#0f19
   };
   window.openMessagePackWebPayment=function(){
     const c=messagePackConfig(),s=messagePackSeller();if(!s)return;
-    window.messagePackWebPayment={amount:Number(c.packPrice||10),messages:Number(c.packMessages||20),sellerId:s.id,referenceId:uid('webmsgpack')};
-    document.getElementById('modalRoot').innerHTML=`<div class="modal-bg" onclick="if(event.target===this)closeModal()"><div class="modal payment-modal-wide"><button class="btn iconbtn close" onclick="closeModal()">×</button><div class="payment-layout"><aside class="payment-left"><div class="payment-left-title"><span class="logo-mark">SE</span><span>Sale Earn Web Checkout</span></div><div class="payment-total"><span>Messages</span><span>${esc(c.messages)}</span></div><div class="payment-total"><span>Total</span><span>${money(c.packPrice)}</span></div><div class="payment-methods"><h4>Pay from Web</h4><button class="pay-opt active" onclick="selectMessagePackWebPay(this,'UPI')">🔶 <span><b>UPI Test</b><small style="display:block;color:#7a8599;font-weight:600">Website test payment</small></span></button><button class="pay-opt" onclick="selectMessagePackWebPay(this,'Card')">▣ <span>Card Test</span></button><button class="pay-opt" onclick="selectMessagePackWebPay(this,'Paytm')">◉ <span>Paytm Test</span></button></div><div style="margin-top:auto;border-top:1px solid #e7e9ef;padding-top:15px;text-align:center;color:#7a8599;font-size:11px">Sale Earn Web Test Mode · No real charge</div></aside><section class="payment-right"><div class="payment-right-inner"><h2 style="text-align:center;margin:4px 0 5px">Web Payment</h2><div id="messagePackWebForm" class="pay-form"><div style="text-align:center"><h3>UPI Test Checkout</h3><p class="small muted">This is the existing Sale Earn web test payment page.</p><div class="payment-qr"><div class="payment-expire">Test payment ready</div></div></div></div><div class="modal-footer" style="margin-top:18px"><button class="btn" onclick="openMessagePack()">← Previous</button><button class="btn primary" onclick="completeMessagePackWebPayment()">Pay ${money(c.packPrice)} from Web</button></div></div></section></div></div></div>`;
+    const amount=Number(c.packPrice||10),available=sellerAvailableBalance(s.id);
+    if(amount>available){toast(`Insufficient To Receive balance. Available: ${money(available)} · Required: ${money(amount)}`);return}
+    window.messagePackWebPayment={amount,messages:Number(c.packMessages||20),sellerId:s.id,referenceId:uid('webmsgpack'),availableAtOpen:available};
+    document.getElementById('modalRoot').innerHTML=`<div class="modal-bg" onclick="if(event.target===this)closeModal()"><div class="modal payment-modal-wide"><button class="btn iconbtn close" onclick="closeModal()">×</button><div class="payment-layout"><aside class="payment-left"><div class="payment-left-title"><span class="logo-mark">SE</span><span>Sale Earn Web Checkout</span></div><div class="payment-total"><span>Messages</span><span>${esc(c.messages)}</span></div><div class="payment-total"><span>Total</span><span>${money(amount)}</span></div><div class="payment-total"><span>To Receive available</span><span>${money(available)}</span></div><div class="payment-total"><span>Remaining after Pay</span><span>${money(available-amount)}</span></div><div class="payment-methods"><h4>Pay from Web</h4><button class="pay-opt active" onclick="selectMessagePackWebPay(this,'UPI')">🔶 <span><b>UPI Test</b><small style="display:block;color:#7a8599;font-weight:600">Website test payment</small></span></button><button class="pay-opt" onclick="selectMessagePackWebPay(this,'Card')">▣ <span>Card Test</span></button><button class="pay-opt" onclick="selectMessagePackWebPay(this,'Paytm')">◉ <span>Paytm Test</span></button></div><div style="margin-top:auto;border-top:1px solid #e7e9ef;padding-top:15px;text-align:center;color:#7a8599;font-size:11px">Sale Earn Web Test Mode · Uses To Receive balance</div></aside><section class="payment-right"><div class="payment-right-inner"><h2 style="text-align:center;margin:4px 0 5px">Web Payment</h2><div class="dash-card"><div class="security-row"><span>Available To Receive</span><b>${money(available)}</b></div><div class="security-row"><span>Message pack</span><b>${money(amount)}</b></div><div class="security-row"><span>After payment</span><b>${money(available-amount)}</b></div></div><div id="messagePackWebForm" class="pay-form"><div style="text-align:center"><h3>UPI Test Checkout</h3><p class="small muted">Your To Receive balance was checked before opening this payment panel.</p><div class="payment-qr"><div class="payment-expire">Payment ready</div></div></div></div><div class="modal-footer" style="margin-top:18px"><button class="btn" onclick="openMessagePack()">← Previous</button><button class="btn primary" onclick="completeMessagePackWebPayment()">Pay ${money(amount)} from Web</button></div></div></section></div></div></div>`;
   };
   window.selectMessagePackWebPay=function(btn,type){document.querySelectorAll('.payment-left .pay-opt').forEach(x=>x.classList.remove('active'));btn.classList.add('active');const box=document.getElementById('messagePackWebForm');if(!box)return;box.innerHTML=type==='UPI'?'<div style="text-align:center"><h3>UPI Test Checkout</h3><p class="small muted">Website UPI test payment selected.</p><div class="payment-qr"><div class="payment-expire">Test payment ready</div></div></div>':type==='Card'?'<div class="form-grid"><div class="field"><label>Card Number</label><input inputmode="numeric" placeholder="Test card number"></div><div class="field"><label>Expiry</label><input placeholder="MM/YY"></div><div class="field"><label>CVV</label><input inputmode="numeric" placeholder="123"></div></div><p class="small muted">Prototype/test mode only. Do not enter a real card.</p>':'<div class="field"><label>Paytm Mobile</label><input placeholder="98xxxxxx00"></div><p class="small muted">Prototype/test mode only.</p>'};
   window.completeMessagePackWebPayment=function(){
     if(!systemGuard('payments','Payments are temporarily disabled by Admin'))return;
     const x=window.messagePackWebPayment,s=messagePackSeller();if(!x||!s)return;
-    const tx=fakeGatewayCreate('messagePack',x.amount,{refId:x.referenceId,sellerId:s.id,recipient:'ADMIN',source:'WEB_TEST'});
-    document.getElementById('modalRoot').innerHTML='<div class="modal-bg"><div class="modal" style="text-align:center;padding:34px"><div style="font-size:42px">⏳</div><h2>Verifying Web Payment</h2><p class="muted">Checking Sale Earn test transaction...</p></div></div>';
-    setTimeout(()=>{if(!fakeGatewayMarkSuccess(tx.id)){fakeGatewayFail(tx.id,'Web test gateway did not report success');toast('Web payment failed');return}setTimeout(()=>{if(!fakeGatewayVerify(tx.id,{userId:s.id,amount:x.amount,kind:'messagePack',recipient:'ADMIN',refId:x.referenceId})){fakeGatewayFail(tx.id,'Web test verification mismatch');toast('Web payment verification failed');return}const added=recordMessagePack('WEB_TEST',{id:tx.id,gatewayPaymentId:tx.id},x.referenceId);if(added)toast('Web payment verified')},450)},450);
+    const available=sellerAvailableBalance(s.id);
+    if(x.amount>available){toast(`Insufficient To Receive balance. Available: ${money(available)} · Required: ${money(x.amount)}`);openMessagePackWebPayment();return}
+    const tx=fakeGatewayCreate('messagePack',x.amount,{refId:x.referenceId,sellerId:s.id,recipient:'INTERNAL_LEDGER',source:'BALANCE'});
+    document.getElementById('modalRoot').innerHTML='<div class="modal-bg"><div class="modal" style="text-align:center;padding:34px"><div style="font-size:42px">⏳</div><h2>Verifying Web Payment</h2><p class="muted">Checking To Receive balance and Sale Earn test transaction...</p></div></div>';
+    setTimeout(()=>{
+      if(!fakeGatewayMarkSuccess(tx.id)){fakeGatewayFail(tx.id,'Web test gateway did not report success');toast('Web payment failed');return}
+      setTimeout(()=>{
+        if(!fakeGatewayVerify(tx.id,{userId:s.id,amount:x.amount,kind:'messagePack',recipient:'INTERNAL_LEDGER',refId:x.referenceId})){fakeGatewayFail(tx.id,'Web test verification mismatch');toast('Web payment verification failed');return}
+        if(sellerAvailableBalance(s.id)<x.amount){fakeGatewayFail(tx.id,'Insufficient balance at verification');toast('Insufficient To Receive balance');return}
+        S.balancePayments=S.balancePayments||[];
+        const spendId=uid('bal');
+        S.balancePayments.unshift({id:spendId,sellerId:s.id,amount:Number(x.amount),kind:'messagePack',source:'BALANCE',status:'SUCCESS',paymentVerified:true,gatewayPaymentId:tx.id,date:nowISO(),meta:{messages:x.messages,referenceId:x.referenceId,webPayment:true}});
+        const added=recordMessagePack('BALANCE',{id:tx.id,gatewayPaymentId:tx.id},x.referenceId);
+        if(added)toast(`${x.messages} extra messages added and ${money(x.amount)} deducted from To Receive`);
+      },450)
+    },450);
   };
 })();
 </script>
