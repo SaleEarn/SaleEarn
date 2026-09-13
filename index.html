@@ -2374,7 +2374,7 @@ function productCard(p){
   </div>
  </article>`
 }
-function activeAds(){const now=Date.now();return (S.ads||[]).filter(a=>{const end=new Date(a.endDate||0).getTime(),start=new Date(a.startDate||0).getTime(),p=product(a.productId);return a.status==="ACTIVE"&&["ONLINE","BALANCE"].includes(String(a.paymentSource||""))&&a.paymentStatus==="SUCCESS"&&a.paymentVerified===true&&!!p&&p.sellerId===a.sellerId&&start<=now&&end>now})}
+function activeAds(){const now=Date.now();return (S.ads||[]).filter(a=>{const end=new Date(a.endDate||0).getTime(),start=new Date(a.startDate||0).getTime(),p=product(a.productId);return a.status==="ACTIVE"&&["ONLINE","BALANCE","RAZORPAY_TEST"].includes(String(a.paymentSource||""))&&a.paymentStatus==="SUCCESS"&&a.paymentVerified===true&&!!p&&p.sellerId===a.sellerId&&start<=now&&end>now})}
 function startAdFromHome(id){if(!S.currentUser){openAuth("signin","seller");return}if(!currentSeller()){toast("Seller dashboard access required");return}if(currentSeller().id!==product(id)?.sellerId){toast("Only the product owner can boost this product");return}go("dashboard/ads")}
 function home(){
  const homepageAds=activeAds().filter(a=>String(a.placement||a.type||"").includes("Homepage"));
@@ -5789,4 +5789,6 @@ applyAppearanceTexture();
 })();
 </script>
 
+
+<!-- data-saleearn-razorpay-ad-activation-v2="v1" -->
 </html>
