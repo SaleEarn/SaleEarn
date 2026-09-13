@@ -6390,4 +6390,120 @@ html:root[data-theme="dark"] .ad-premium{background:linear-gradient(135deg,#0f19
   window.saleEarnPaymentActivationReady=true;
 })();
 </script>
+
+<!-- data-saleearn-money-ledger="v1" -->
+<script id="saleearn-money-ledger-v1">
+(function(){
+  'use strict';
+  const PAISA=100;
+  const n=v=>Number.isFinite(Number(v))?Number(v):0;
+  const paise=v=>Math.round(n(v)*PAISA);
+  const rupees=p=>paise(p)/PAISA;
+  const exact=v=>rupees(paise(v));
+  const upper=v=>String(v||'').trim().toUpperCase();
+  const arr=k=>Array.isArray(S[k])?S[k]:(S[k]=[]);
+  const moneyKeys={orders:['amount','originalAmount','couponDiscount','platformFee','netSellerAmount'],payouts:['amount','receivedAmount','returnedAmount'],ads:['cost'],subscriptions:['amount','discount'],balancePayments:['amount'],referralUpgrades:['amount','price'],referrals:['commission','paidAmount'],serviceRefunds:['amount'],sellerFinanceLedger:['amount'],adminFinancialLedger:['amount'],adminCommissionAdjustments:['amount']};
+  function normalizeMoneyState(){
+    Object.entries(moneyKeys).forEach(([collection,keys])=>arr(collection).forEach(row=>keys.forEach(k=>{if(row[k]!==undefined&&row[k]!==null)row[k]=exact(row[k])})));
+    arr('coupons').forEach(c=>{if(String(c.type||'').toLowerCase()==='fixed'&&c.value!=null)c.value=exact(c.value)});
+    // Keep a deterministic, auditable ledger. It is derived from verified records
+    // and never becomes an additional balance, so it cannot create money.
+    const ledger=[];
+    arr('orders').filter(x=>upper(x.status)==='SUCCESS').forEach(x=>{
+      const gross=paise(x.amount),fee=paise(x.platformFee??(n(x.amount)*n(x.platformFeeRate??.20))),net=Math.max(0,gross-fee);
+      ledger.push({id:'sale:'+x.id,refId:x.id,type:'PRODUCT_SALE',status:'POSTED',sellerId:x.sellerId,date:x.date||nowISO(),buyerDebit:rupees(gross),sellerCredit:rupees(net),platformCredit:rupees(Math.min(gross,fee))});
+    });
+    arr('balancePayments').filter(x=>upper(x.status)==='SUCCESS'&&x.paymentVerified!==false).forEach(x=>{
+      const amount=paise(x.amount),sign=amount>=0?-1:1;
+      ledger.push({id:'balance:'+x.id,refId:x.id,type:upper(x.kind||'BALANCE_PAYMENT'),status:'POSTED',sellerId:x.sellerId,date:x.date||nowISO(),sellerDebit:rupees(Math.max(0,sign*amount)),sellerCredit:rupees(Math.max(0,-sign*amount)),platformCredit:rupees(Math.max(0,amount))});
+    });
+    arr('subscriptions').filter(x=>(upper(x.paymentStatus)==='SUCCESS'||x.paymentVerified===true)&&x.paymentVerified!==false).forEach(x=>ledger.push({id:'subscription:'+x.id,refId:x.id,type:'SUBSCRIPTION',status:'POSTED',sellerId:x.sellerId,date:x.date||nowISO(),platformCredit:exact(x.amount)}));
+    arr('ads').filter(x=>(upper(x.paymentStatus)==='SUCCESS'||x.paymentVerified===true)&&x.paymentVerified!==false).forEach(x=>ledger.push({id:'ad:'+x.id,refId:x.id,type:'AD_PAYMENT',status:'POSTED',sellerId:x.sellerId,date:x.startDate||x.date||nowISO(),platformCredit:exact(x.cost)}));
+    arr('payouts').filter(x=>['PENDING','PROCESSING','UNDER REVIEW','ON HOLD','APPROVED','PAID','SUCCESS','RECEIVED'].includes(upper(x.status))).forEach(x=>ledger.push({id:'payout:'+x.id,refId:x.id,type:'SELLER_PAYOUT',status:'POSTED',sellerId:x.sellerId,date:x.date||nowISO(),sellerDebit:exact(x.amount)}));
+    arr('referrals').filter(x=>['ACTIVE','PAID'].includes(upper(x.status))).forEach(x=>ledger.push({id:'referral:'+x.id,refId:x.id,type:'REFERRAL_COMMISSION',status:'POSTED',sellerId:x.sellerId,date:x.date||nowISO(),sellerCredit:exact(x.commission),platformDebit:exact(x.commission)}));
+    S.moneyLedger=ledger;
+  }
+  const nativeMoney=window.money;
+  window.money=function(value){
+    const v=exact(value);
+    return currencyCode()==='USD'?'$'+(v/usdInrRate()).toFixed(2):'₹'+v.toFixed(2);
+  };
+  const nativeCouponDiscount=window.couponDiscount;
+  if(nativeCouponDiscount)window.couponDiscount=function(c,price){return exact(nativeCouponDiscount(c,exact(price)))};
+  const nativeEarnings=window.sellerEarnings;
+  if(nativeEarnings)window.sellerEarnings=function(sid){return exact(nativeEarnings(sid))};
+  const nativeBalance=window.sellerAvailableBalance;
+  if(nativeBalance)window.sellerAvailableBalance=function(sid){return Math.max(0,exact(nativeBalance(sid)))};
+  const nativeCommission=window.webCommissionStats;
+  if(nativeCommission)window.webCommissionStats=function(days){const x=nativeCommission(days)||{};return Object.fromEntries(Object.entries(x).map(([k,v])=>[k,exact(v)]))};
+  const nativeServiceApply=window.applyServicePayment;
+  if(nativeServiceApply)window.applyServicePayment=function(x,source){
+    if(x&&x.amount!=null)x={...x,amount:exact(x.amount),meta:{...(x.meta||{}),basePrice:x.meta?.basePrice==null?x.meta?.basePrice:exact(x.meta.basePrice),baseAmount:x.meta?.baseAmount==null?x.meta?.baseAmount:exact(x.meta.baseAmount),discount:x.meta?.discount==null?x.meta?.discount:exact(x.meta.discount)}};
+    const result=nativeServiceApply.call(this,x,source);normalizeMoneyState();return result;
+  };
+  const nativeSave=window.save;
+  if(nativeSave)window.save=function(){normalizeMoneyState();return nativeSave.apply(this,arguments)};
+  const nativeSnapshot=window.onlineSnapshot;
+  if(nativeSnapshot)window.onlineSnapshot=function(){return {...nativeSnapshot(),moneyLedger:S.moneyLedger||[]}};
+  const nativeInstall=window.seInstall;
+  if(nativeInstall)window.seInstall=function(remote){const local=structuredClone(S.moneyLedger||[]),result=nativeInstall.apply(this,arguments);const remoteLedger=Array.isArray(S.moneyLedger)?S.moneyLedger:[];const map=new Map([...remoteLedger,...local].map(x=>[String(x.id),x]));S.moneyLedger=[...map.values()];return result};
+  normalizeMoneyState();
+  window.saleEarnMoney={paise,rupees,exact,normalize:normalizeMoneyState};
+  window.saleEarnMoneyLedgerReady=true;
+})();
+</script>
+
+<!-- data-saleearn-subscription-activation-reconcile="v1" -->
+<script id="saleearn-subscription-activation-reconcile-v1">
+(function(){
+  'use strict';
+  const upper=v=>String(v||'').trim().toUpperCase();
+  const cancelled=new Set(['CANCELLED','CANCELED','FAILED','VOID','REVOKED','REFUNDED']);
+  const successStates=new Set(['SUCCESS','PAID','APPROVED','ACTIVE','VERIFIED']);
+  const validPaid=x=>{
+    if(!x||cancelled.has(upper(x.status))||x.paymentVerified===false)return false;
+    const hasProof=x.paymentVerified===true||successStates.has(upper(x.paymentStatus))||successStates.has(upper(x.status));
+    return hasProof;
+  };
+  const time=v=>{const t=new Date(v||0).getTime();return Number.isFinite(t)?t:NaN};
+  const startOf=x=>time(x?.startDate||x?.date||x?.createdAt||x?.paidAt);
+  const endOf=x=>{const explicit=time(x?.endDate||x?.expiresAt);if(Number.isFinite(explicit))return explicit;const start=startOf(x);return Number.isFinite(start)?start+Number(SUBSCRIPTION_DURATION_MS||30*86400000):NaN};
+  const activeNow=(x,when=Date.now())=>{const st=startOf(x),en=endOf(x);return validPaid(x)&&Number.isFinite(st)&&st<=when&&Number.isFinite(en)&&when<en};
+  window.activeSubscriptionAt=function(sid,when){
+    const now=time(when)||Date.now(),key=String(sid);
+    return (S.subscriptions||[]).filter(x=>String(x.sellerId)===key&&activeNow(x,now)).sort((a,b)=>startOf(b)-startOf(a))[0]||null;
+  };
+  window.sellerPlanNow=function(sid,when){
+    const sub=window.activeSubscriptionAt(sid,when||Date.now()),ss=S.sellers?.[sid];
+    return upper(sub?.plan||ss?.plan||'FREE')||'FREE';
+  };
+  window.sellerPlanConfig=function(sid,when){
+    const id=window.sellerPlanNow(sid,when);
+    return (ensurePlatformConfig().plans||[]).find(p=>upper(p.id)===id)||{id:'FREE',name:'FREE',ads:false,analytics:false,referrals:true,advanced:false,prioritySupport:false,verified:false,commissionPct:20,uploadLimit:10};
+  };
+  window.sellerPlanFeatureActive=function(sid,feature,when){return window.sellerPlanConfig(sid,when)[feature]!==false};
+  function reconcile(){
+    let changed=false,now=Date.now();
+    S.subscriptions=Array.isArray(S.subscriptions)?S.subscriptions:[];
+    Object.values(S.sellers||{}).forEach(ss=>{
+      const sub=window.activeSubscriptionAt(ss.id,now),old=String(ss.plan||'FREE'),next=upper(sub?.plan||'FREE')||'FREE';
+      if(sub){
+        if(sub.status!=='ACTIVE'){sub.status='ACTIVE';changed=true}
+        if(sub.paymentStatus!=='SUCCESS'){sub.paymentStatus='SUCCESS';changed=true}
+        if(sub.paymentVerified!==true){sub.paymentVerified=true;changed=true}
+        if(!sub.startDate&&sub.date){sub.startDate=sub.date;changed=true}
+        if(!sub.endDate){sub.endDate=new Date(startOf(sub)+Number(SUBSCRIPTION_DURATION_MS||30*86400000)).toISOString();changed=true}
+      }
+      if(old!==next){ss.plan=next;changed=true}
+      ss.subscriptionStatus=sub?'ACTIVE':(S.subscriptions.some(x=>String(x.sellerId)===String(ss.id)&&validPaid(x))?'EXPIRED':(ss.subscriptionStatus||'FREE'));
+      ss.activeSubscriptionId=sub?.id||null;
+    });
+    if(changed){try{save()}catch(e){console.warn('Subscription reconciliation save failed',e)}}
+    return changed;
+  }
+  window.syncSubscriptionPlans=reconcile;
+  reconcile();
+  window.saleEarnSubscriptionActivationReady=true;
+})();
+</script>
 </html>
