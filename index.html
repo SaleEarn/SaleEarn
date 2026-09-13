@@ -1646,11 +1646,15 @@ async function startRazorpayCheckout({amount,description,customerName,customerEm
   });
 }
 
-const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
+// Supabase is optional for the public shell: if the CDN is slow/unavailable,
+// visitors still get the marketplace UI instead of a blank page.
+const supabaseClient = window.supabase?.createClient
+  ? window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY)
+  : null;
 window.supabaseClient = supabaseClient;
 let SUPABASE_READY = false;
 let SUPABASE_AUTH_BOOTSTRAP=false;
-supabaseClient.auth.onAuthStateChange((event,session)=>{
+if(supabaseClient) supabaseClient.auth.onAuthStateChange((event,session)=>{
   if(event==='SIGNED_OUT'){
     S.currentUser=null;
     ONLINE_READY=false;
@@ -1805,6 +1809,12 @@ async function syncSupabaseAdmin(user){
   }catch(e){console.warn("Supabase auth/profile sync failed",e);return false}
 }
 async function restoreSupabaseSession(){
+  if(!supabaseClient){
+    ONLINE_LOADING=false;
+    try{if(typeof render==='function')render();}catch(e){console.warn('Public shell render failed:',e)}
+    window.hideSaleEarnLoader?.();
+    return false;
+  }
   try{
     const {data}=await supabaseClient.auth.getSession();
     const authUser=data?.session?.user||null;
@@ -5845,4 +5855,119 @@ applyAppearanceTexture();
   };
 })();
 </script>
+
+<!-- data-saleearn-website-responsive-audit="v1" -->
+<style id="saleearn-website-responsive-audit-v1">
+/* Final layout safety: prevent accidental horizontal scroll and clipped controls. */
+html,body{max-width:100%;overflow-x:hidden}
+img,svg,video,canvas,iframe{max-width:100%}
+input,select,textarea{max-width:100%}
+button,.btn{touch-action:manipulation}
+
+@media (max-width:900px){
+  .container{padding-left:18px;padding-right:18px}
+  .hero-grid{grid-template-columns:1fr}
+  .hero-art{min-height:230px}
+  .admin-grid2,.admin-detail{grid-template-columns:1fr}
+  .payment-layout{grid-template-columns:1fr!important;height:auto!important;max-height:calc(100dvh - 20px)!important;overflow:auto}
+  .payment-left{max-height:245px;border-right:0;border-bottom:1px solid var(--line,#e4e8f0)}
+  .payment-right{min-height:430px;overflow:visible}
+  .payment-right-inner{max-height:none}
+  .finance-adjust-grid{grid-template-columns:1fr}
+}
+
+@media (max-width:760px){
+  .topbar{height:auto;min-height:64px;padding:10px 0}
+  .nav{gap:9px;flex-wrap:wrap}
+  .logo{min-width:0;flex:0 0 auto;font-size:18px}
+  .nav-actions{gap:6px;min-width:0}
+  .nav-actions .btn{padding:9px 10px}
+  .search{order:3;flex:1 1 100%;max-width:none}
+  .hero{padding:34px 0 26px}
+  .hero h1{font-size:clamp(32px,9vw,44px);line-height:1.08}
+  .hero p{font-size:15px;line-height:1.55}
+  .hero-actions{width:100%}
+  .hero-actions .btn{flex:1 1 145px;min-height:44px}
+  .section{padding:26px 0}
+  .section-head{align-items:flex-start;flex-direction:column}
+  .grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+  .product-card{min-width:0}
+  .product-card .thumb{height:170px}
+  .product-card .body{min-width:0;padding:12px}
+  .product-card h3,.product-card h4{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;word-break:break-word}
+  .product-tags{max-width:100%;overflow:hidden}
+  .tag{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .ad-premium-card{width:min(86vw,420px)}
+  .ad-banner{align-items:stretch;flex-direction:column;gap:14px;padding:20px}
+  .ad-banner .btn{width:100%}
+  .profile-head{align-items:flex-start;flex-wrap:wrap;padding:18px}
+  .profile-meta{min-width:0;width:calc(100% - 108px)}
+  .profile-meta h1{font-size:22px;overflow-wrap:anywhere}
+  .stats{gap:12px;flex-wrap:wrap}
+  .form-grid,.security-form-grid{grid-template-columns:1fr!important}
+  .payment-options{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .payment-modal-wide{width:calc(100vw - 16px)!important}
+  .modal-bg{padding:8px}
+  .modal{width:100%;max-height:calc(100dvh - 16px);padding:18px}
+  .modal-footer{flex-direction:column}
+  .modal-footer .btn{width:100%;min-height:44px}
+  .dash-content,.admin-content{min-width:0}
+  .dash-content{padding:14px}
+  .dash-top{padding-left:14px;padding-right:14px}
+  .dash-table,.admin-table{display:block;max-width:100%;overflow-x:auto;white-space:nowrap}
+  .dash-table{min-width:620px}
+  .admin-table{min-width:700px}
+  .table-wrap,.admin-table-wrap{max-width:100%;overflow-x:auto}
+  .control-row{align-items:stretch;flex-direction:column}
+  .control-row .btn{width:100%}
+  .footer-grid{grid-template-columns:1fr 1fr}
+  .sticky-buy{left:12px;right:12px;bottom:12px;width:auto}
+  .seller-admin-preview-bar{left:10px;right:10px;bottom:12px;width:auto;transform:none;justify-content:space-between}
+  .toast{left:12px;right:12px;bottom:12px;text-align:center;max-width:none}
+  .se-studio-root{max-width:100vw!important}
+}
+
+@media (max-width:480px){
+  .container{padding-left:13px;padding-right:13px}
+  .nav-actions .btn:not(.iconbtn){font-size:12px;padding:9px 8px}
+  .grid{grid-template-columns:1fr}
+  .product-card .thumb{height:215px}
+  .category-grid,.footer-grid,.trust-grid,.store-socials,.badge-credit-bar{grid-template-columns:1fr}
+  .hero h1{font-size:32px}
+  .hero-actions .btn{flex-basis:100%;width:100%}
+  .payment-options{grid-template-columns:1fr}
+  .profile-head{padding:15px}
+  .profile-logo{width:72px;height:72px;font-size:24px}
+  .profile-meta{width:calc(100% - 88px)}
+  .dash-top h1{font-size:18px}
+  .dash-content{padding:11px}
+  .detail-info h1{font-size:27px;overflow-wrap:anywhere}
+  .ad-premium-card{width:calc(100vw - 32px)}
+}
+
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{scroll-behavior:auto!important;animation-duration:.001ms!important;animation-iteration-count:1!important;transition-duration:.001ms!important}
+}
+</style>
+<script data-saleearn-website-responsive-audit="v1">
+(function(){
+  'use strict';
+  // A failed third-party script must never leave visitors on a blank loader.
+  function showFallback(){
+    try{
+      const app=document.getElementById('app');
+      if(app && !app.innerHTML.trim() && typeof window.render==='function') window.render();
+      const loader=document.getElementById('siteLoader');
+      if(loader){loader.classList.remove('show');loader.classList.add('hidden');}
+    }catch(e){console.warn('Sale Earn safe boot fallback:',e)}
+  }
+  // Normal boot hides it earlier; this only protects slow/offline preview cases.
+  window.setTimeout(showFallback,9000);
+  window.addEventListener('error',function(e){
+    if(/supabase|checkout|cdn|razorpay/i.test(String(e?.filename||e?.message||''))) window.setTimeout(showFallback,250);
+  },true);
+})();
+</script>
+
+<!-- data-saleearn-website-boot-resilience="v1" -->
 </html>
