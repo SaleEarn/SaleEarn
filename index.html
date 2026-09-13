@@ -2655,11 +2655,32 @@ async function servicePayOnline(){
    },
    onVerified:async(response)=>{
      const verified={...x,gatewayPaymentId:response.razorpay_payment_id,razorpayOrderId:response.razorpay_order_id,paymentVerified:true};
+     const activated=applyServicePayment(verified,"RAZORPAY_TEST");
+     if(verified.kind==="subscription"){
+       const sellerObj=currentSeller();
+       const requestedPlan=String(verified.meta?.plan||sellerObj?.plan||"FREE").toUpperCase();
+       if(sellerObj && requestedPlan!=="FREE"){
+         sellerObj.plan=requestedPlan;
+         sellerObj.subscriptionStatus="ACTIVE";
+         if(!Array.isArray(S.subscriptions))S.subscriptions=[];
+         const gatewayId=String(verified.gatewayPaymentId||"");
+         let existing=gatewayId?S.subscriptions.find(z=>String(z.gatewayPaymentId||"")===gatewayId):null;
+         if(!existing){
+           const now=nowISO(),end=new Date(Date.now()+SUBSCRIPTION_DURATION_MS).toISOString();
+           existing={id:uid("sub"),sellerId:sellerObj.id,plan:requestedPlan,amount:Number(verified.amount||0),discount:Number(verified.meta?.discount||0),paymentSource:"RAZORPAY_TEST",paymentStatus:"SUCCESS",paymentVerified:true,gatewayPaymentId:gatewayId||null,date:now,startDate:now,endDate:end};
+           S.subscriptions.unshift(existing);
+         }
+         sellerObj.activeSubscriptionId=existing.id;
+         sellerObj.lastSubscription={plan:requestedPlan,amount:Number(existing.amount||verified.amount||0),date:existing.date||nowISO(),discount:Number(existing.discount||0)};
+         try{if(typeof syncSubscriptionPlans==='function')syncSubscriptionPlans()}catch(e){console.warn("Subscription sync after payment failed",e)}
+       }
+     }
+     if(!activated && verified.kind!=="subscription") throw new Error("Payment activation failed");
      window.serviceOnline=null;
      window.pendingService=null;
-     applyServicePayment(verified,"RAZORPAY_TEST");
-     toast(`${label} test payment verified.`);
-     showServiceSuccess(verified);
+     save();
+     toast(`${label} test payment verified and activated.`);
+     showServiceSuccess({...verified,activated:true});
    }
  });
  if(!ok)closeModal();
