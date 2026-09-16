@@ -2021,6 +2021,42 @@ function razorpaySafeDescription(value){
     .slice(0,255) || "Sale Earn payment";
 }
 
+async function sendTransactionEmails(order, product){
+  try{
+    // Emails are allowed only for a verified, successful product purchase.
+    if(!window.supabaseClient || !order || order.status!=='SUCCESS' || order.paymentVerified!==true) return {ok:false,skipped:true};
+    const seller=(S.users||[]).find(u=>String(u.id||u.userId||u.authId||"")===String(order.sellerId||"") || String(u.authId||"")===String(order.sellerId||"") || String(u.email||"").toLowerCase()===String(product?.sellerEmail||"").toLowerCase());
+    const sellerEmail=String(seller?.email||product?.sellerEmail||"").trim();
+    const buyerEmail=String(order.customerEmail||"").trim();
+    if(!buyerEmail && !sellerEmail) return {ok:false,skipped:true};
+
+    const siteUrl=String(window.location.origin||"").replace(/\/$/,"");
+    const salesUrl=`${siteUrl}/#dashboard/orders`;
+    const accessUrl=String((product?.links&&product.links[0])||order.deliveryUrl||"").trim();
+    const payload={
+      type:"product_purchase",
+      order:{
+        id:order.id,productId:order.productId,productTitle:order.productTitle,
+        amount:Number(order.amount||0),originalAmount:Number(order.originalAmount||0),
+        platformFeeRate:Number(order.platformFeeRate||0),platformFee:Number(order.platformFee||0),
+        netSellerAmount:Number(order.netSellerAmount||0),date:order.date,method:order.method,
+        status:order.status,paymentVerified:order.paymentVerified===true,
+        gatewayPaymentId:order.gatewayPaymentId,razorpayOrderId:order.razorpayOrderId,
+        accessUrl,salesUrl
+      },
+      buyer:{name:order.customerName||"Buyer",email:buyerEmail},
+      seller:{name:seller?.name||seller?.display_name||"Seller",email:sellerEmail},
+      product:{title:product?.title||order.productTitle||"Digital product",image:product?.image||"",accessUrl}
+    };
+    const {data,error}=await window.supabaseClient.functions.invoke("send-transaction-emails",{body:payload});
+    if(error) throw error;
+    return data||{ok:true};
+  }catch(e){
+    console.warn("Transaction email notification failed:",e);
+    return {ok:false,error:e?.message||String(e)};
+  }
+}
+
 async function startRazorpayCheckout({amount,description,customerName,customerEmail,metadata={},onVerified}){
   if(!RAZORPAY_KEY_ID || RAZORPAY_KEY_ID.includes("REPLACE_WITH_YOUR_KEY_ID")){
     toast("Add your Razorpay Test Key ID in the HTML first.");
@@ -3504,6 +3540,9 @@ async function testPay(){
        }
      }
      save();
+     // Payment is already verified and the order is saved before notifications are sent.
+     // Email failures never roll back a successful purchase.
+     await sendTransactionEmails(order,p);
      closeModal();
      go("success/"+order.id);
    }
