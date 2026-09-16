@@ -132,6 +132,7 @@ body{background:var(--bg);color:var(--ink)}
 :root[data-theme="dark"] .account-nav button.active{background:linear-gradient(135deg,#5f51e8,#7b61ff)!important;color:#fff}
 :root[data-theme="dark"] .field label{color:#dbe4f5}
 :root[data-theme="dark"] .field input:focus,:root[data-theme="dark"] .field textarea:focus,:root[data-theme="dark"] .field select:focus{border-color:#7769f4;box-shadow:0 0 0 3px rgba(119,105,244,.16)}
+:root[data-theme="dark"] .tabs{background:#0d1425!important}:root[data-theme="dark"] .tabs button{color:#9ba8c1}:root[data-theme="dark"] .tabs button.active{background:#1c2740!important;color:#fff!important;box-shadow:none}
 :root[data-theme="dark"] .security-row,:root[data-theme="dark"] .order-row,:root[data-theme="dark"] .activity-row{border-color:#26334d}
 /* Admin panel always follows the polished dark dashboard visual */
 .admin-shell{background:#080d1b!important;color:#e8ecf7}
@@ -515,6 +516,8 @@ button:hover,.btn:hover{transform:translateY(-1px)}button:active,.btn:active{tra
 :root[data-theme="dark"] .payment-right-inner::-webkit-scrollbar-thumb{background:linear-gradient(180deg,#756bf0,#4f45c9);border-color:#0d1526}
 :root[data-theme="dark"] .payment-total{background:#0d1527;box-shadow:inset 0 1px 0 rgba(255,255,255,.035)}
 :root[data-theme="dark"] .payment-expire{background:#1c2437;color:#cbd5ea}
+:root[data-theme="dark"] .link-box{background:#0d1425!important;border-color:#2d3851!important;color:#e8ecf7!important}
+:root[data-theme="dark"] .star-picker button{color:#3a4767}
 @media(max-width:900px){.admin-shell{height:calc(100vh - 72px)}.payment-layout{height:auto;max-height:calc(100vh - 34px);overflow:auto}.payment-left{max-height:260px}.payment-right{min-height:430px;overflow:visible}.payment-right-inner{max-height:calc(100vh - 320px)}}
 @media(max-width:600px){.admin-shell{height:calc(100vh - 56px)}.admin-content{padding-bottom:28px}.payment-modal-wide{max-height:calc(100vh - 18px)}.payment-layout{max-height:calc(100vh - 18px)}.payment-left{max-height:220px}.payment-right-inner{max-height:calc(100vh - 275px)}}
 
@@ -2871,11 +2874,79 @@ let PRODUCT_DRAFT_SAVE_TIMER=0;
 function queueProductDraftAutosave(){persistProductDraftFromDOM(false);clearTimeout(PRODUCT_DRAFT_SAVE_TIMER);PRODUCT_DRAFT_SAVE_TIMER=setTimeout(()=>{try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){console.warn("Draft autosave delayed",e)}},180)}
 document.addEventListener("input",e=>{if(e.target?.closest?.(".dash-form"))queueProductDraftAutosave()},true);
 document.addEventListener("change",e=>{if(e.target?.closest?.(".dash-form")){persistProductDraftFromDOM(true);clearTimeout(PRODUCT_DRAFT_SAVE_TIMER)}},true);
-function go(route){if(!String(route).startsWith("dashboard"))sessionStorage.removeItem("SE_RECYCLE_DRAFT_REMINDER");const cur=routeNow();if(!window.__skipProductDraftPersist&&/^dashboard\/add(?:2|3)?/.test(cur))persistProductDraftFromDOM();if(cur===route){return}const st=navStack();st.push(route);saveNavStack(st);history.pushState({saleEarn:true,route},"","#"+route);const y=window.scrollY||document.documentElement.scrollTop||0;window.__saleEarnRestoreScroll=true;render();requestAnimationFrame(()=>{window.scrollTo(0,y);window.__saleEarnRestoreScroll=false})}
-function goBack(fallback="home"){const st=navStack();if(st.length>1){st.pop();saveNavStack(st);history.back()}else{go(fallback)}}
+/* -------------------- ROUTE VIEW / SIDEBAR POSITION MEMORY -------------------- */
+const SE_VIEW_STATE_KEY="SE_ROUTE_VIEW_STATE_V2";
+const SE_VIEW_SIDEBARS=[
+  ".market-layout>.sidebar-filter",
+  ".policy-sidebar",
+  ".account-layout>.account-nav",
+  ".dashboard-shell>.dash-side",
+  ".admin-shell>.admin-side",
+  ".mail-shell>.mail-sidebar"
+];
+function seReadViewState(){try{return JSON.parse(sessionStorage.getItem(SE_VIEW_STATE_KEY)||"{}")}catch(e){return {}}}
+function seWriteViewState(v){try{sessionStorage.setItem(SE_VIEW_STATE_KEY,JSON.stringify(v))}catch(e){}}
+function seCaptureRouteView(r=routeNow()){
+  const v=seReadViewState();
+  v[r]={scroll:window.scrollY||document.documentElement.scrollTop||0,sidebars:{}};
+  SE_VIEW_SIDEBARS.forEach(sel=>{const el=document.querySelector(sel);if(el)v[r].sidebars[sel]=el.scrollTop||0});
+  seWriteViewState(v);
+}
+function seGetRouteView(r){return seReadViewState()[r]||null}
+function seRestoreRouteView(r,mode="top",keepSidebar=false,sidebarState=null){
+  const saved=seGetRouteView(r);
+  const y=mode==="back"&&saved?Number(saved.scroll)||0:0;
+  window.scrollTo(0,y);
+  const sideState=sidebarState||((mode==="back"&&saved)?saved.sidebars:null);
+  SE_VIEW_SIDEBARS.forEach(sel=>{
+    const el=document.querySelector(sel);
+    if(!el)return;
+    if(keepSidebar && sideState && Object.prototype.hasOwnProperty.call(sideState,sel)) el.scrollTop=Number(sideState[sel])||0;
+    else el.scrollTop=mode==="back"&&saved?Number(saved.sidebars?.[sel])||0:0;
+  });
+}
+try{history.scrollRestoration="manual"}catch(e){}
+
+function go(route){
+  route=String(route||"home");
+  if(!route.startsWith("dashboard"))sessionStorage.removeItem("SE_RECYCLE_DRAFT_REMINDER");
+  const cur=routeNow();
+  if(!window.__skipProductDraftPersist&&/^dashboard\/add(?:2|3)?/.test(cur))persistProductDraftFromDOM();
+  if(cur===route)return;
+  /* Remember exactly where the user was before leaving the current route. */
+  seCaptureRouteView(cur);
+  const currentView=seGetRouteView(cur);
+  const sameSidebarSection=(/^dashboard(?:\/|$)/.test(cur)&&/^dashboard(?:\/|$)/.test(route))||(/^admin(?:\/|$)/.test(cur)&&/^admin(?:\/|$)/.test(route));
+  const keepSidebarState=sameSidebarSection&&currentView?currentView.sidebars:null;
+  const st=navStack();st.push(route);saveNavStack(st);
+  history.pushState({saleEarn:true,route},"","#"+route);
+  window.__saleEarnRestoreScroll=true;
+  render();
+  requestAnimationFrame(()=>{seRestoreRouteView(route,"top",!!keepSidebarState,keepSidebarState);window.__saleEarnRestoreScroll=false});
+}
+function goBack(fallback="home"){
+  const st=navStack();
+  if(st.length>1){
+    /* Save the page we are leaving; the destination snapshot is restored after popstate. */
+    seCaptureRouteView(routeNow());
+    st.pop();saveNavStack(st);history.back();
+  }else{go(fallback)}
+}
 function routeNow(){return location.hash.replace(/^#/ ,"")||"home"}
 function route(){return routeNow()}
-window.addEventListener("popstate",()=>{persistProductDraftFromDOM();const st=navStack();if(st.length>1)st.pop();saveNavStack(st);const y=window.scrollY||document.documentElement.scrollTop||0;window.__saleEarnRestoreScroll=true;render();requestAnimationFrame(()=>{window.scrollTo(0,y);window.__saleEarnRestoreScroll=false})});
+window.addEventListener("popstate",()=>{
+  persistProductDraftFromDOM();
+  const st=navStack();if(st.length>1)st.pop();saveNavStack(st);
+  const target=routeNow();
+  const saved=seGetRouteView(target);
+  window.__saleEarnRestoreScroll=true;
+  render();
+  requestAnimationFrame(()=>{
+    /* Browser Back = restore the exact previous route position/sidebar position. */
+    seRestoreRouteView(target,saved?"back":"top");
+    window.__saleEarnRestoreScroll=false;
+  });
+});
 
 /* -------------------- HEADER / COMMON -------------------- */
 function siteName(){return String(ensurePlatformConfig()?.branding?.websiteName||"Sale Earn").trim()||"Sale Earn"}
@@ -3287,9 +3358,7 @@ function startSelling(){
   const target="dashboard/overview";
   const current=routeNow();
   if(current===target){render();if(!window.__saleEarnRestoreScroll){window.scrollTo(0,0);}return false;}
-  const st=navStack();st.push(target);saveNavStack(st);
-  history.pushState({saleEarn:true,route:target},"","#"+target);
-  render();window.scrollTo(0,0);
+  go(target);
  }catch(err){
   console.error("Start Selling error:",err);
   toast(err?.message||"Start Selling could not open. Please try again.");
@@ -4544,7 +4613,7 @@ function saveStep1(editId){
  save();
  const next=`dashboard/add2${editId?"?edit="+encodeURIComponent(editId):""}`;
  if(routeNow()!==next){
-   const st=navStack();st.push(next);saveNavStack(st);history.pushState({saleEarn:true,route:next},"","#"+next);render();
+   go(next);
  }
 }
 function addDraftTag(t){const el=document.getElementById("tagInput");if(!el)return;const a=el.value.split(",").map(x=>x.trim()).filter(Boolean);if(!a.includes(t))a.push(t);el.value=a.join(", ");S.draft=S.draft||{};S.draft.tags=a;save()}
@@ -4775,6 +4844,7 @@ function render(){
 function maybeRecycleDraftReminder(){try{if(!S.currentUser||!route().startsWith('dashboard'))return;const sid=currentSeller()?.id;const n=(S.deletedProducts||[]).filter(x=>x.sellerId===sid&&x.recycledFrom==='drafts').length;if(n&&!sessionStorage.getItem('SE_RECYCLE_DRAFT_REMINDER')){sessionStorage.setItem('SE_RECYCLE_DRAFT_REMINDER','1');setTimeout(()=>showPMConfirm('Recycle Bin Drafts',`You have <b>${n}</b> draft(s) in Recycle Bin.`,[`<button class="btn" onclick="closeModal()">Close</button>`,`<button class="btn danger" onclick="closeModal();deleteAllDraftsFromRecycleBin()">Delete All Drafts from Recycle Bin</button>`]),120)}}catch(e){}}
 function closeModal(){clearInterval(window.paymentTimer);document.getElementById("modalRoot").innerHTML="";window.pendingBuy=null}
 if(!sessionStorage.getItem("SE_NAV_STACK")){saveNavStack([routeNow()])}
+if(!sessionStorage.getItem("SE_ROUTE_VIEW_STATE_V2"))sessionStorage.setItem("SE_ROUTE_VIEW_STATE_V2",JSON.stringify({}));
 /* Startup deferred until Admin Studio is ready. */
 
 (function(){
@@ -7419,6 +7489,48 @@ html:root[data-theme="dark"] .ad-premium{background:linear-gradient(135deg,#0f19
     return r;
   };
   setTimeout(bindPicker,0);
+})();
+</script>
+
+<script>
+(function(){
+  // Keep the seller-dashboard / admin sidebar scroll position stable when switching
+  // between sub-pages of the SAME section, but start fresh at the top when the
+  // section itself is entered from somewhere else.
+  function sectionOf(route){
+    route = String(route||'');
+    if(/^admin/.test(route)) return 'admin';
+    if(/^dashboard/.test(route)) return 'dash';
+    return null;
+  }
+  window.__seSidebarScroll = window.__seSidebarScroll || {admin:0, dash:0};
+  window.__seLastSection = window.__seLastSection || null;
+
+  const oldRender2 = window.render;
+  window.render = function(){
+    const prevAdminEl = document.querySelector('.admin-side');
+    const prevDashEl = document.querySelector('.dash-side');
+    if(prevAdminEl) window.__seSidebarScroll.admin = prevAdminEl.scrollTop;
+    if(prevDashEl) window.__seSidebarScroll.dash = prevDashEl.scrollTop;
+
+    const prevSection = window.__seLastSection;
+    const r = oldRender2.apply(this, arguments);
+    const newSection = sectionOf(typeof routeNow === 'function' ? routeNow() : '');
+
+    requestAnimationFrame(function(){
+      const newAdminEl = document.querySelector('.admin-side');
+      const newDashEl = document.querySelector('.dash-side');
+      if(newAdminEl){
+        newAdminEl.scrollTop = (newSection === 'admin' && prevSection === 'admin') ? window.__seSidebarScroll.admin : 0;
+      }
+      if(newDashEl){
+        newDashEl.scrollTop = (newSection === 'dash' && prevSection === 'dash') ? window.__seSidebarScroll.dash : 0;
+      }
+    });
+
+    window.__seLastSection = newSection;
+    return r;
+  };
 })();
 </script>
 
