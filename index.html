@@ -1701,6 +1701,291 @@ html:root[data-theme] .footer .studio-footer{color:#aab6c8!important;border-top:
 :root[data-theme="dark"] .se-legal-dark-contact p,
 :root[data-theme="dark"] .se-guide-dark span{color:rgba(255,255,255,.86)!important}
 </style>
+
+<style id="saleearn-interactive-lighting-v2">
+/* Sale Earn — polished interaction + dark-mode readability pass */
+:root{--se-hover-border:#8b80f4;--se-hover-glow:rgba(108,95,235,.16);--se-hover-lift:-3px;--se-hover-scale:1.018}
+
+/* Public/policy pages: every meaningful card feels interactive on hover. */
+.policy-card,.se-about-feature,.se-about-step,.se-sitemap-card,.se-plan-card,
+.se-faq-support,.se-faq-group,.se-faq-item,.se-refund-box,.se-legal-contact-card,
+.se-terms-grid > *, .se-contact-detail,.se-contact-trust,
+.se-legal-dark-contact,.se-about-trust-stats > *, .se-faq-heading,
+.se-faq-hero > *, .se-contact-copy > *, .se-contact-form,
+.se-sitemap-hero > *, .se-contact-social,
+.seller-box,.sales-seller-card,.seller-score-card,.seller-tools > *,
+.product-card,.ad-card,.payment-card,.balance-card,.history-card,
+.metric,.dash-card,.setting-card,.security-box,.order-card,.library-card,
+.store-card,.account-panel,.account-profile-card,.profile-card,.ref-card,
+.warning-card,.service-card,.summary-card,.earning-card,.payout-card,
+.auth-box,.admin-card,.admin-kpi,.admin-detail-box {
+  transition:transform .22s cubic-bezier(.2,.75,.25,1),
+             box-shadow .22s ease,border-color .22s ease,
+             background-color .22s ease;
+}
+
+.policy-card:hover,.se-about-feature:hover,.se-about-step:hover,.se-sitemap-card:hover,
+.se-plan-card:hover,.se-faq-support:hover,.se-faq-group:hover,.se-refund-box:hover,
+.se-legal-contact-card:hover,.se-terms-grid > *:hover,.se-contact-detail:hover,
+.se-contact-trust:hover,.se-legal-dark-contact:hover,.se-about-trust-stats > *:hover,
+.se-faq-heading:hover,.se-contact-copy > *:hover,.se-contact-form:hover,
+.se-sitemap-hero > *:hover,.se-contact-social:hover,
+.seller-box:hover,.sales-seller-card:hover,.seller-score-card:hover,.seller-tools > *:hover,
+.product-card:hover,.ad-card:hover,.payment-card:hover,.balance-card:hover,
+.history-card:hover,.metric:hover,.dash-card:hover,.setting-card:hover,
+.security-box:hover,.order-card:hover,.library-card:hover,.store-card:hover,
+.account-panel:hover,.account-profile-card:hover,.profile-card:hover,.ref-card:hover,
+.warning-card:hover,.service-card:hover,.summary-card:hover,.earning-card:hover,
+.payout-card:hover,.auth-box:hover,.admin-card:hover,.admin-kpi:hover,
+.admin-detail-box:hover {
+  transform:translateY(var(--se-hover-lift)) scale(var(--se-hover-scale));
+  border-color:var(--se-hover-border)!important;
+  box-shadow:0 12px 30px rgba(31,35,55,.11),0 0 0 1px var(--se-hover-glow);
+}
+
+/* FAQ rows get a clearer hit area and a gentle accent when hovered/focused. */
+.se-faq-item{border:1px solid transparent;border-radius:16px;overflow:hidden}
+.se-faq-item:hover,.se-faq-item:focus-within{
+  border-color:var(--se-hover-border)!important;
+  box-shadow:0 10px 26px rgba(31,35,55,.10),0 0 0 3px rgba(108,95,235,.07);
+  transform:translateY(-2px) scale(1.012);
+}
+.se-faq-item summary,.se-faq-item button{cursor:pointer}
+
+/* Any actual clickable element gets a crisp boundary without changing layout. */
+.policy-card a,.se-sitemap-card a,.se-about-feature a,.se-about-step a,
+.se-faq-item a,.se-plan-card a,.se-contact-detail a,
+.policy-card button,.se-sitemap-card button,.se-about-feature button,
+.se-about-step button,.se-faq-item button,.se-plan-card button {
+  transition:transform .18s ease,box-shadow .18s ease,border-color .18s ease;
+}
+.policy-card a:hover,.se-sitemap-card a:hover,.se-about-feature a:hover,
+.se-about-step a:hover,.se-faq-item a:hover,.se-plan-card a:hover,
+.se-contact-detail a:hover,.policy-card button:hover,.se-sitemap-card button:hover,
+.se-about-feature button:hover,.se-about-step button:hover,.se-faq-item button:hover,
+.se-plan-card button:hover{transform:translateY(-1px)}
+
+/* Dark-mode lighting: readable text + visible boundaries on secondary surfaces. */
+:root[data-theme="dark"] .policy-card,
+:root[data-theme="dark"] .se-about-feature,
+:root[data-theme="dark"] .se-about-step,
+:root[data-theme="dark"] .se-sitemap-card,
+:root[data-theme="dark"] .se-plan-card,
+:root[data-theme="dark"] .se-faq-support,
+:root[data-theme="dark"] .se-faq-group,
+:root[data-theme="dark"] .se-faq-item,
+:root[data-theme="dark"] .se-refund-box,
+:root[data-theme="dark"] .se-legal-contact-card,
+:root[data-theme="dark"] .se-terms-grid > *,
+:root[data-theme="dark"] .se-contact-detail,
+:root[data-theme="dark"] .se-contact-trust,
+:root[data-theme="dark"] .se-contact-form,
+:root[data-theme="dark"] .seller-box,
+:root[data-theme="dark"] .sales-seller-card,
+:root[data-theme="dark"] .seller-score-card {
+  background:#11192c!important;color:#e8ecf7;border-color:#293652!important;
+}
+:root[data-theme="dark"] .policy-card:hover,
+:root[data-theme="dark"] .se-about-feature:hover,
+:root[data-theme="dark"] .se-about-step:hover,
+:root[data-theme="dark"] .se-sitemap-card:hover,
+:root[data-theme="dark"] .se-plan-card:hover,
+:root[data-theme="dark"] .se-faq-support:hover,
+:root[data-theme="dark"] .se-faq-group:hover,
+:root[data-theme="dark"] .se-faq-item:hover,
+:root[data-theme="dark"] .se-refund-box:hover,
+:root[data-theme="dark"] .se-legal-contact-card:hover,
+:root[data-theme="dark"] .se-terms-grid > *:hover,
+:root[data-theme="dark"] .se-contact-detail:hover,
+:root[data-theme="dark"] .se-contact-trust:hover,
+:root[data-theme="dark"] .se-contact-form:hover,
+:root[data-theme="dark"] .seller-box:hover,
+:root[data-theme="dark"] .sales-seller-card:hover,
+:root[data-theme="dark"] .seller-score-card:hover {
+  background:#151f35!important;border-color:#786cf5!important;
+  box-shadow:0 16px 34px rgba(0,0,0,.30),0 0 0 1px rgba(120,108,245,.12);
+}
+:root[data-theme="dark"] .policy-card p,
+:root[data-theme="dark"] .policy-card li,
+:root[data-theme="dark"] .se-about-feature p,
+:root[data-theme="dark"] .se-about-step p,
+:root[data-theme="dark"] .se-sitemap-card p,
+:root[data-theme="dark"] .se-faq-answer,
+:root[data-theme="dark"] .se-faq-answer p,
+:root[data-theme="dark"] .se-contact-detail p,
+:root[data-theme="dark"] .se-contact-trust p,
+:root[data-theme="dark"] .se-refund-box p,
+:root[data-theme="dark"] .se-terms-grid p,
+:root[data-theme="dark"] .se-terms-grid li {
+  color:#b9c5dc!important;
+}
+:root[data-theme="dark"] .policy-card h1,
+:root[data-theme="dark"] .policy-card h2,
+:root[data-theme="dark"] .policy-card h3,
+:root[data-theme="dark"] .se-about-feature h3,
+:root[data-theme="dark"] .se-about-step h3,
+:root[data-theme="dark"] .se-sitemap-card h3,
+:root[data-theme="dark"] .se-faq-item summary,
+:root[data-theme="dark"] .se-faq-heading,
+:root[data-theme="dark"] .se-contact-detail h3,
+:root[data-theme="dark"] .se-refund-box h3,
+:root[data-theme="dark"] .se-terms-grid h3 {
+  color:#f1f5ff!important;
+}
+
+/* Keyboard accessibility mirrors mouse interaction. */
+.policy-card:focus-within,.se-about-feature:focus-within,.se-about-step:focus-within,
+.se-sitemap-card:focus-within,.se-plan-card:focus-within,.se-contact-detail:focus-within,
+.se-faq-support:focus-within,.se-refund-box:focus-within,.se-legal-contact-card:focus-within{
+  outline:2px solid rgba(108,95,235,.45);outline-offset:2px;
+}
+
+@media (hover:none){
+  .policy-card:hover,.se-about-feature:hover,.se-about-step:hover,.se-sitemap-card:hover,
+  .se-plan-card:hover,.se-faq-support:hover,.se-faq-group:hover,.se-refund-box:hover,
+  .se-legal-contact-card:hover,.se-terms-grid > *:hover,.se-contact-detail:hover,
+  .se-contact-trust:hover,.se-contact-form:hover,.seller-box:hover,.sales-seller-card:hover,
+  .seller-score-card:hover,.product-card:hover,.ad-card:hover,.metric:hover,.dash-card:hover{
+    transform:none;box-shadow:none;
+  }
+}
+@media (prefers-reduced-motion:reduce){
+  .policy-card,.se-about-feature,.se-about-step,.se-sitemap-card,.se-plan-card,
+  .se-faq-item,.se-contact-detail,.product-card,.dash-card,.metric{transition:none!important}
+}
+</style>
+
+<style id="saleearn-interactive-universal-v3">
+/* Universal interaction polish: subtle lift, boundary and lighting across the whole app. */
+:root{
+  --se-int-border:#8d83f5;
+  --se-int-glow:rgba(108,95,235,.18);
+  --se-int-shadow:0 14px 34px rgba(31,35,55,.12);
+}
+
+/* Common surfaces / cards throughout marketplace, seller, account and admin screens. */
+.card,.product-card,.category-card,.plan,.power,.settings-card,.admin-card,.admin-kpi,
+.admin-detail-box,.admin-confirm,.admin-search,.dash-card,.metric,.setting-card,
+.security-box,.order-card,.library-card,.store-card,.stat-card,.profile-card,
+.account-profile-card,.account-panel,.account-stat,.asset-card,.review-box,.bundle-box,
+.ref-card,.warning-card,.service-card,.summary-card,.earning-card,.payout-card,
+.ad-card,.payment-card,.balance-card,.history-card,.sales-seller-card,.seller-score-card,
+.seller-box,.seller-tools>*,.auth-box,.modal,.sidebar-filter,.detail-main,.payment-left,
+.payment-right-inner,.payment-total,.pay-opt,.se-info-panel,.se-info-list>div,
+.se-guide-rule,.se-guide-check-list,.se-guide-practices>div,.se-refund-box,
+.se-legal-section,.se-legal-mini,.se-legal-contact-card>div,.se-contact-detail,
+.se-contact-trust,.se-sitemap-card,.se-about-feature,.se-about-mini,.se-about-step,
+.se-about-core,.se-faq-side,.se-faq-support,.se-plan-card,.se-faq-group,.se-faq-item,
+.se-contact-form,.se-terms-grid>*{
+  transition:transform .24s cubic-bezier(.2,.75,.25,1),
+             box-shadow .24s ease,border-color .24s ease,background-color .24s ease,
+             filter .24s ease;
+}
+
+.card:hover,.product-card:hover,.category-card:hover,.plan:hover,.power:hover,
+.settings-card:hover,.admin-card:hover,.admin-kpi:hover,.admin-detail-box:hover,
+.admin-confirm:hover,.admin-search:hover,.dash-card:hover,.metric:hover,.setting-card:hover,
+.security-box:hover,.order-card:hover,.library-card:hover,.store-card:hover,.stat-card:hover,
+.profile-card:hover,.account-profile-card:hover,.account-panel:hover,.account-stat:hover,
+.asset-card:hover,.review-box:hover,.bundle-box:hover,.ref-card:hover,.warning-card:hover,
+.service-card:hover,.summary-card:hover,.earning-card:hover,.payout-card:hover,.ad-card:hover,
+.payment-card:hover,.balance-card:hover,.history-card:hover,.sales-seller-card:hover,
+.seller-score-card:hover,.seller-box:hover,.seller-tools>*:hover,.auth-box:hover,
+.modal:hover,.sidebar-filter:hover,.detail-main:hover,.payment-left:hover,.payment-right-inner:hover,
+.payment-total:hover,.pay-opt:hover,.se-info-panel:hover,.se-info-list>div:hover,
+.se-guide-rule:hover,.se-guide-check-list:hover,.se-guide-practices>div:hover,
+.se-refund-box:hover,.se-legal-section:hover,.se-legal-mini:hover,.se-legal-contact-card>div:hover,
+.se-contact-detail:hover,.se-contact-trust:hover,.se-sitemap-card:hover,
+.se-about-feature:hover,.se-about-mini:hover,.se-about-step:hover,.se-about-core:hover,
+.se-faq-side:hover,.se-faq-support:hover,.se-plan-card:hover,.se-faq-group:hover,
+.se-faq-item:hover,.se-contact-form:hover,.se-terms-grid>*:hover{
+  transform:translateY(-3px) scale(1.012);
+  border-color:var(--se-int-border)!important;
+  box-shadow:var(--se-int-shadow),0 0 0 1px var(--se-int-glow);
+}
+
+/* Interactive controls: clear hit-area feedback. */
+button,.btn,a.pill,.pill,.view-toggle button,select,input,textarea,
+.policy-side-link,.se-about-categories button,.faq button,.se-faq-item summary{
+  transition:transform .18s ease,box-shadow .18s ease,border-color .18s ease,
+             background-color .18s ease,color .18s ease,filter .18s ease;
+}
+button:hover,.btn:hover,.pill:hover,.view-toggle button:hover,.policy-side-link:hover,
+.se-about-categories button:hover,.faq button:hover,.se-faq-item summary:hover{
+  filter:brightness(1.025);
+}
+
+/* Focus = same visible boundary for keyboard users. */
+.card:focus-within,.product-card:focus-within,.category-card:focus-within,
+.plan:focus-within,.power:focus-within,.settings-card:focus-within,
+.admin-card:focus-within,.dash-card:focus-within,.metric:focus-within,
+.policy-card:focus-within,.se-legal-section:focus-within,.se-faq-item:focus-within{
+  outline:2px solid rgba(108,95,235,.46);outline-offset:2px;
+}
+
+/* Night mode: stronger but soft neon boundary and readable hover state. */
+:root[data-theme="dark"] .card:hover,:root[data-theme="dark"] .product-card:hover,
+:root[data-theme="dark"] .category-card:hover,:root[data-theme="dark"] .plan:hover,
+:root[data-theme="dark"] .power:hover,:root[data-theme="dark"] .settings-card:hover,
+:root[data-theme="dark"] .admin-card:hover,:root[data-theme="dark"] .admin-kpi:hover,
+:root[data-theme="dark"] .admin-detail-box:hover,:root[data-theme="dark"] .dash-card:hover,
+:root[data-theme="dark"] .metric:hover,:root[data-theme="dark"] .setting-card:hover,
+:root[data-theme="dark"] .security-box:hover,:root[data-theme="dark"] .order-card:hover,
+:root[data-theme="dark"] .library-card:hover,:root[data-theme="dark"] .store-card:hover,
+:root[data-theme="dark"] .stat-card:hover,:root[data-theme="dark"] .profile-card:hover,
+:root[data-theme="dark"] .account-profile-card:hover,:root[data-theme="dark"] .account-panel:hover,
+:root[data-theme="dark"] .account-stat:hover,:root[data-theme="dark"] .asset-card:hover,
+:root[data-theme="dark"] .review-box:hover,:root[data-theme="dark"] .bundle-box:hover,
+:root[data-theme="dark"] .ref-card:hover,:root[data-theme="dark"] .warning-card:hover,
+:root[data-theme="dark"] .service-card:hover,:root[data-theme="dark"] .summary-card:hover,
+:root[data-theme="dark"] .earning-card:hover,:root[data-theme="dark"] .payout-card:hover,
+:root[data-theme="dark"] .ad-card:hover,:root[data-theme="dark"] .payment-card:hover,
+:root[data-theme="dark"] .balance-card:hover,:root[data-theme="dark"] .history-card:hover,
+:root[data-theme="dark"] .sales-seller-card:hover,:root[data-theme="dark"] .seller-score-card:hover,
+:root[data-theme="dark"] .seller-box:hover,:root[data-theme="dark"] .auth-box:hover,
+:root[data-theme="dark"] .modal:hover,:root[data-theme="dark"] .detail-main:hover,
+:root[data-theme="dark"] .se-info-panel:hover,:root[data-theme="dark"] .se-info-list>div:hover,
+:root[data-theme="dark"] .se-guide-rule:hover,:root[data-theme="dark"] .se-guide-check-list:hover,
+:root[data-theme="dark"] .se-guide-practices>div:hover,:root[data-theme="dark"] .se-refund-box:hover,
+:root[data-theme="dark"] .se-legal-section:hover,:root[data-theme="dark"] .se-legal-mini:hover,
+:root[data-theme="dark"] .se-legal-contact-card>div:hover,:root[data-theme="dark"] .se-contact-detail:hover,
+:root[data-theme="dark"] .se-contact-trust:hover,:root[data-theme="dark"] .se-sitemap-card:hover,
+:root[data-theme="dark"] .se-about-feature:hover,:root[data-theme="dark"] .se-about-mini:hover,
+:root[data-theme="dark"] .se-about-step:hover,:root[data-theme="dark"] .se-about-core:hover,
+:root[data-theme="dark"] .se-faq-side:hover,:root[data-theme="dark"] .se-faq-support:hover,
+:root[data-theme="dark"] .se-plan-card:hover,:root[data-theme="dark"] .se-faq-group:hover,
+:root[data-theme="dark"] .se-faq-item:hover,:root[data-theme="dark"] .se-contact-form:hover,
+:root[data-theme="dark"] .se-terms-grid>*:hover{
+  background-color:#151f35!important;
+  border-color:#786cf5!important;
+  box-shadow:0 16px 38px rgba(0,0,0,.32),0 0 0 1px rgba(120,108,245,.18),0 0 22px rgba(93,80,220,.08);
+}
+
+/* Keep touch devices stable: no accidental zoom while tapping. */
+@media (hover:none){
+  .card:hover,.product-card:hover,.category-card:hover,.plan:hover,.power:hover,
+  .settings-card:hover,.admin-card:hover,.admin-kpi:hover,.admin-detail-box:hover,
+  .dash-card:hover,.metric:hover,.setting-card:hover,.security-box:hover,.order-card:hover,
+  .library-card:hover,.store-card:hover,.stat-card:hover,.profile-card:hover,
+  .account-profile-card:hover,.account-panel:hover,.account-stat:hover,.asset-card:hover,
+  .review-box:hover,.bundle-box:hover,.ref-card:hover,.warning-card:hover,.service-card:hover,
+  .summary-card:hover,.earning-card:hover,.payout-card:hover,.ad-card:hover,.payment-card:hover,
+  .balance-card:hover,.history-card:hover,.sales-seller-card:hover,.seller-score-card:hover,
+  .seller-box:hover,.auth-box:hover,.modal:hover,.detail-main:hover,.se-info-panel:hover,
+  .se-info-list>div:hover,.se-guide-rule:hover,.se-guide-check-list:hover,
+  .se-guide-practices>div:hover,.se-refund-box:hover,.se-legal-section:hover,
+  .se-legal-mini:hover,.se-legal-contact-card>div:hover,.se-contact-detail:hover,
+  .se-contact-trust:hover,.se-sitemap-card:hover,.se-about-feature:hover,.se-about-mini:hover,
+  .se-about-step:hover,.se-about-core:hover,.se-faq-side:hover,.se-faq-support:hover,
+  .se-plan-card:hover,.se-faq-group:hover,.se-faq-item:hover,.se-contact-form:hover,
+  .se-terms-grid>*:hover{transform:none}
+}
+@media (prefers-reduced-motion:reduce){
+  .card,.product-card,.category-card,.plan,.power,.settings-card,.admin-card,.dash-card,
+  .metric,.policy-card,.se-legal-section,.se-faq-item{transition:none!important}
+}
+</style>
+
 </head>
 <body>
 <div id="siteLoader" class="site-loader" aria-label="Loading Sale Earn" aria-live="polite">
@@ -2057,7 +2342,16 @@ async function restoreSupabaseSession(){
 "use strict";
 
 /* -------------------- STORAGE + DATA -------------------- */
-window.studioVisibleProducts=()=>S.products;
+window.studioVisibleProducts=()=>{
+  const list=Array.isArray(S.products)?S.products:[];
+  return list.filter(p=>{
+    const approval=String(p?.approvalStatus||"APPROVED").toUpperCase();
+    if(approval!=="APPROVED")return false;
+    if(p?.hiddenByAdmin===true)return false;
+    const scan=productSafetyScan(p);
+    return !scan.flagged;
+  });
+};
 const KEY="saleEarnFinal_v3_clean";
 const USD_INR_RATE=83.33,FX_CACHE_KEY="saleearn_fx_usd_inr_v1",FX_MAX_AGE=12*60*60*1000;
 const nowISO=()=>new Date().toISOString();
@@ -2131,7 +2425,7 @@ const seedProducts=[
  {id:"p1007",sellerId:"seller02",sales:38,title:"3200+ Long Cartoon Videos Bundle | 16:9 HD Cartoon Videos | Ready to Use",category:"Editing Assets",tags:["Cartoon","HD","YouTube"],price:99,oldPrice:149,description:"Long-form cartoon editing assets in a ready-to-use digital bundle.",image:"https://images.unsplash.com/photo-1513106580091-1d82408b8cd5?auto=format&fit=crop&w=900&q=80",links:["https://example.com/cartoon-hd"]},
  {id:"p1008",sellerId:"seller03",sales:57,title:"Creator Editing Toolkit | Transitions, SFX & Motion Assets",category:"Editing Assets",tags:["Editing","Transitions","SFX"],price:149,oldPrice:249,description:"A starter toolkit for editors with motion-friendly assets.",image:"https://images.unsplash.com/photo-1536240478700-b869070f9279?auto=format&fit=crop&w=900&q=80",links:["https://example.com/editing-kit"]},
  {id:"p1009",sellerId:"seller02",sales:31,title:"AI Creator Starter Course | Prompting & Workflow",category:"Courses",tags:["AI","Course","Creator"],price:199,oldPrice:299,description:"A beginner-friendly digital course for creator workflows.",image:"https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=900&q=80",links:["https://example.com/ai-course"]},
- {id:"p1010",sellerId:"seller03",sales:22,title:"Creator Utility Software Pack",category:"Software",tags:["Software","Creator Tools","Productivity"],price:299,oldPrice:399,description:"Digital utilities and workflow resources for creators.",image:"https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=900&q=80",links:["https://example.com/software-pack"]}
+ {id:"p1010",sellerId:"seller03",sales:22,title:"Creator Workflow Template Pack",category:"Templates",tags:["Templates","Creator Tools","Productivity"],price:299,oldPrice:399,description:"Original creator workflow templates and productivity resources.",image:"https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=900&q=80",links:["https://example.com/creator-template-pack"]}
 ];
 const seed={
  users:[],
@@ -2642,7 +2936,7 @@ function policyPage(kind){
 
     <section class="se-about-categories">
       <span>EXPLORE DIGITAL PRODUCTS</span>
-      <div><button onclick="go('market')">Reel Bundles</button><button onclick="go('market')">Courses</button><button onclick="go('market')">Software</button><button onclick="go('market')">Creator Assets</button><button onclick="go('market')">Templates</button><button onclick="go('market')">Other Digital Products</button></div>
+      <div><button onclick="go('market')">Reel Bundles</button><button onclick="go('market')">Courses</button><button onclick="go('market')">Creator Assets</button><button onclick="go('market')">Templates</button><button onclick="go('market')">Other Digital Products</button></div>
     </section>
 
     <section class="se-about-core">
@@ -2682,7 +2976,7 @@ function policyPage(kind){
       <div><b>Reel Bundles</b><span>Creator-ready digital reel and content bundles.</span></div>
       <div><b>Courses & Training</b><span>Legitimate courses, lessons, workshops and study resources.</span></div>
       <div><b>Design & Creator Assets</b><span>Templates, graphics, branding resources and other creator files.</span></div>
-      <div><b>Software & Tools</b><span>Legitimate software, utilities and digital tools you are authorized to distribute.</span></div>
+      <div><b>Creator Tools & Templates</b><span>Original templates, workflow resources and creator assets you are authorized to distribute.</span></div>
       <div><b>Ebooks & Guides</b><span>Original or properly licensed written digital resources.</span></div>
       <div><b>Other Digital Products</b><span>Other eligible digital products that comply with Sale Earn policies.</span></div>
     </div>
@@ -2714,7 +3008,7 @@ function policyPage(kind){
    <div class="policy-card"><h2>Important</h2><p>Payout timing can depend on payment processing, verification, account status and applicable operational controls. This page does not promise a fixed settlement time.</p></div>
   `},
   prohibited:{title:'Not Allowed Products',intro:'Sale Earn keeps the marketplace focused on legitimate digital products and does not allow products or activities that create legal, safety, fraud or payment-compliance concerns.',body:`
-   <div class="policy-card"><h2>Examples of products and activities that are not allowed</h2><ul style="line-height:1.9;padding-left:22px"><li>Adult or sexually explicit material and related services</li><li>Alcohol, illegal drugs and drug-related products</li><li>Gambling, betting, lotteries and games of chance</li><li>Weapons and weapon-related products</li><li>Fake government IDs, passports, diplomas or forged documents</li><li>Hacking, cracking, phishing, credential theft, malware or illegal-access tools/instructions</li><li>Unauthorized copies of copyrighted books, music, movies, software, games or other protected material</li><li>Counterfeit, fake or unauthorized goods</li><li>Spam, bulk unsolicited-email tools, mailing lists or similar abuse-enabling products</li><li>Pyramid, matrix, get-rich-quick or misleading guaranteed-income schemes</li><li>Money-laundering services, unlicensed money-transfer services or other regulated financial activity without required authorization</li><li>Cryptocurrency/NFT products or other products prohibited by the applicable payment provider or law</li><li>Any product or activity that is illegal, deceptive, fraudulent or otherwise prohibited by applicable law</li></ul></div>
+   <div class="policy-card"><h2>Examples of products and activities that are not allowed</h2><ul style="line-height:1.9;padding-left:22px"><li>Adult or sexually explicit material and related services</li><li>Alcohol, illegal drugs and drug-related products</li><li>Gambling, betting, lotteries and games of chance</li><li>Weapons and weapon-related products</li><li>Fake government IDs, passports, diplomas or forged documents</li><li>Hacking, cracking, phishing, credential theft, malware or illegal-access tools/instructions</li><li>Unauthorized copies of copyrighted books, music, movies, software, games or other protected material</li><li>Software downloads, license keys or other intangible software goods that are not accepted by the applicable payment provider</li><li>Counterfeit, fake or unauthorized goods</li><li>Spam, bulk unsolicited-email tools, mailing lists or similar abuse-enabling products</li><li>Pyramid, matrix, get-rich-quick or misleading guaranteed-income schemes</li><li>Money-laundering services, unlicensed money-transfer services or other regulated financial activity without required authorization</li><li>Cryptocurrency/NFT products or other products prohibited by the applicable payment provider or law</li><li>Any product or activity that is illegal, deceptive, fraudulent or otherwise prohibited by applicable law</li></ul></div>
    <div class="policy-card"><h2>How review works</h2><p>Sale Earn may use automated checks to identify common risk indicators. A flagged listing is sent to the Admin review list. Admin can inspect the product information and then approve, keep it pending or reject it. Automated flags are review signals, not a final legal finding.</p></div>
   `},
   pricing:{title:'Pricing Details',intro:'Sale Earn displays applicable prices in the marketplace and at checkout before a payment is submitted.',body:`
@@ -2762,7 +3056,7 @@ function policyPage(kind){
        </div>
        <div class="se-faq-group" id="sellerFaq"><h3 class="se-faq-heading"><span>♙</span>Seller Frequently Asked Questions</h3>
         <details class="se-faq-item"><summary>How do I start selling on Sale Earn?</summary><div class="se-faq-answer">Use Become a Seller / Vendor Portal and complete the seller onboarding steps shown by the platform. Sellers must meet the published eligibility and verification requirements.</div></details>
-        <details class="se-faq-item"><summary>What types of products can I sell?</summary><div class="se-faq-answer">Sale Earn is a digital-products marketplace. Examples include creator assets, reel bundles, courses, software and other legitimate digital products that comply with marketplace rules.</div></details>
+        <details class="se-faq-item"><summary>What types of products can I sell?</summary><div class="se-faq-answer">Sale Earn is a digital-products marketplace. Examples include creator assets, reel bundles, courses, templates and other eligible digital products that comply with marketplace rules.</div></details>
         <details class="se-faq-item"><summary>How do I upload product files?</summary><div class="se-faq-answer">Use the Vendor Portal product upload flow. Delivery information must use a supported trusted HTTPS provider and sellers must confirm they have the required rights.</div></details>
         <details class="se-faq-item"><summary>How will I get paid?</summary><div class="se-faq-answer">Eligible seller earnings move through the platform's payout workflow. A payout request can be reviewed before it is successfully processed.</div></details>
         <details class="se-faq-item"><summary>Does Sale Earn charge commission?</summary><div class="se-faq-answer">Yes. Current seller plan settings are Free: 20% commission, Premium: 15%, and Enterprise: 10%. Applicable settings shown by the platform control future eligible transactions.</div></details>
@@ -2857,7 +3151,7 @@ function policyPage(kind){
 
    <div class="se-legal-section">
     <div class="se-legal-section-title"><span>01</span><h2>Digital Product Nature</h2></div>
-    <p>Products listed on Sale Earn are digital products such as creator assets, reel bundles, courses, software and other eligible digital resources. Once a digital product is successfully delivered or made accessible, it cannot be physically returned.</p>
+    <p>Products listed on Sale Earn are digital products such as creator assets, reel bundles, courses, templates and other eligible digital resources. Once a digital product is successfully delivered or made accessible, it cannot be physically returned.</p>
    </div>
 
    <div class="se-legal-section">
@@ -2988,7 +3282,7 @@ function home(){
  const premium=studioVisibleProducts().filter(p=>premiumIds.has(p.id));
  const picks=[...premium,...studioVisibleProducts().filter(p=>!premiumIds.has(p.id))];
  const repeated=[...picks,...picks].slice(0,12);
- const heroShowcase=repeated.length?`<div class="hero-art"><div class="hero-kicker">THE ULTIMATE DIGITAL ECONOMY · PREMIUM PICKS</div><div class="hero-track">${repeated.map(p=>`<div class="pick-card" onclick="go('product/${p.id}')">${thumb(p)}<div class="body"><h4>${esc(p.title)}</h4><span class="price">${money(p.price)}</span></div></div>`).join("")}</div></div>`:`<div class="hero-art hero-empty"><div class="hero-empty-mark">SE</div><div><div class="hero-kicker">CREATOR-FIRST MARKETPLACE</div><h3>Build, sell and discover digital products.</h3><p>Courses, creator bundles, editing assets and useful software in one calm workspace.</p></div><div class="hero-empty-tags"><span>Courses</span><span>Assets</span><span>Software</span></div></div>`;
+ const heroShowcase=repeated.length?`<div class="hero-art"><div class="hero-kicker">THE ULTIMATE DIGITAL ECONOMY · PREMIUM PICKS</div><div class="hero-track">${repeated.map(p=>`<div class="pick-card" onclick="go('product/${p.id}')">${thumb(p)}<div class="body"><h4>${esc(p.title)}</h4><span class="price">${money(p.price)}</span></div></div>`).join("")}</div></div>`:`<div class="hero-art hero-empty"><div class="hero-empty-mark">SE</div><div><div class="hero-kicker">CREATOR-FIRST MARKETPLACE</div><h3>Build, sell and discover digital products.</h3><p>Courses, creator bundles, editing assets and useful creator templates and digital assets in one calm workspace.</p></div><div class="hero-empty-tags"><span>Courses</span><span>Assets</span><span>Templates</span></div></div>`;
  const ads=homepageAds;
  const homeAdStrip=ads.length?`<div class="ad-strip home-ad-strip"><div class="ad-track">${ads.map(a=>{const p=product(a.productId);return `<div class="ad-card" onclick="go('product/${a.productId}')"><div class="ad-thumb">${p?.image?`<img src="${esc(p.image)}">`:"📣"}</div><div><b>${esc(a.title||p?.title||"Sponsored")}</b><div class="small" style="color:#aeb8cc">${esc(a.placement||"Homepage")}</div></div></div>`}).join("")}</div></div>`:"";
  const topProducts=[...premium].filter((p,i,a)=>a.findIndex(x=>x.id===p.id)===i).slice(0,10);
@@ -2997,12 +3291,12 @@ function home(){
  <main class="page">
  ${homepageAds.length?`<section class="ad-premium"><div class="container"><div class="small" style="color:#bfc8dd;font-weight:900;margin-bottom:8px">ADVERTISEMENT · PREMIUM PRODUCTS</div></div><div class="ad-premium-track">${homepageAds.map(a=>{const p=product(a.productId);return p?`<div class="ad-premium-card" onclick="go('product/${p.id}')"><div class="ad-thumb">${p.image?`<img src="${esc(p.image)}">`:`<span>🧩</span>`}</div><div class="ad-info"><div class="small" style="color:#aeb8cc">Seller ID: <span style="color:#fff;cursor:pointer" onclick="event.stopPropagation();go('seller/${p.sellerId}')">@${esc(p.sellerId)}</span></div><b>${esc(p.title)}</b><div class="ad-price">${money(p.price)}</div></div><button class="ad-boost" onclick="event.stopPropagation();startAdFromHome('${p.id}')">Ad / Boost</button></div>`:""}).join("")}</div></section>`:""}
  <section id="home-hero" class="hero"><div class="container hero-grid">
-  <div><div class="eyebrow">THE CREATOR MARKETPLACE</div><h1>${esc(ensurePlatformConfig().cms.heroTitle||"Turn your digital skills into products people want.")}</h1><p>${esc(ensurePlatformConfig().cms.heroSubtitle||"Discover ready-to-use creator assets, courses, reels bundles and software — or launch your own store with Sale Earn.")}</p>
+  <div><div class="eyebrow">THE CREATOR MARKETPLACE</div><h1>${esc(ensurePlatformConfig().cms.heroTitle||"Turn your digital skills into products people want.")}</h1><p>${esc(ensurePlatformConfig().cms.heroSubtitle||"Discover ready-to-use creator assets, courses, reel bundles and templates — or launch your own store with Sale Earn.")}</p>
   <div class="hero-actions"><button class="btn primary" onclick="go('market')">Explore Marketplace →</button><button class="btn" onclick="window.startSelling()">Start Selling</button></div></div>
   ${heroShowcase}
  </div></section>
  <section id="home-categories" class="section"><div class="container"><div class="section-head"><div><h2>Browse by Category</h2><p>Open a category and explore its live subcategories.</p></div></div>
- <div class="category-grid">${["Courses","Reel Bundle","Editing Assets","Software"].map((c,i)=>`<button class="category-card" onclick="window.marketCategory='${c}';go('market')"><div class="cat-icon">${["🎓","🎬","✂️","💻"][i]}</div><h3>${c}</h3><p>Explore products and subcategories</p></button>`).join("")}</div></div></section>
+ <div class="category-grid">${["Courses","Reel Bundle","Editing Assets","Templates"].map((c,i)=>`<button class="category-card" onclick="window.marketCategory='${c}';go('market')"><div class="cat-icon">${["🎓","🎬","✂️","💻"][i]}</div><h3>${c}</h3><p>Explore products and subcategories</p></button>`).join("")}</div></div></section>
  <section id="home-trending" class="section"><div class="container"><div class="section-head"><div><h2>Popular Creator Assets</h2><p>Useful products across the marketplace.</p></div></div><div class="grid">${studioVisibleProducts().slice(0,8).map(productCard).join("")}</div></div></section>
  </main>${footer()}`
 }
@@ -3024,7 +3318,7 @@ function market(){ if(controlOff('marketplaceFreeze'))return `${header()}<main c
  const premiumIds=new Set(marketplaceAds.map(a=>a.productId));
  const premiumProducts=marketplaceAds.map(a=>product(a.productId)).filter(Boolean).filter((p,i,a)=>a.findIndex(x=>x.id===p.id)===i);
  const premiumRepeated=premiumProducts;
- const cats=["All","Courses","Reel Bundle","Editing Assets","Software"];
+ const cats=["All","Courses","Reel Bundle","Editing Assets","Templates"];
  return `${header()}<main class="page"><div class="container page-title"><h1>Marketplace</h1><p class="muted">Find your next digital product.</p></div>
  ${marketplaceAds.length?`<section class="ad-premium"><div class="container"><div class="small" style="color:#bfc8dd;font-weight:900;margin-bottom:8px">ADVERTISEMENT · MARKETPLACE PREMIUM</div></div><div class="ad-premium-track">${premiumRepeated.map(p=>`<div class="ad-premium-card" onclick="go('product/${p.id}')"><div class="ad-thumb">${p.image?`<img src="${esc(p.image)}">`:`<span>🧩</span>`}</div><div class="ad-info"><div class="small" style="color:#aeb8cc">Seller ID: <span style="color:#fff;cursor:pointer" onclick="event.stopPropagation();go('seller/${p.sellerId}')">@${esc(p.sellerId)}</span></div><b>${esc(p.title)}</b><div class="ad-price">${money(p.price)}</div></div><button class="ad-boost" onclick="event.stopPropagation();startAdFromHome('${p.id}')">Ad / Boost</button></div>`).join("")}</div></section>`:""}
  <div class="container market-layout"><aside class="sidebar-filter"><h4>Categories</h4>${cats.map(c=>`<button class="filter-cat ${cat===c?"active":""}" onclick="window.marketCategory='${c}';window.marketSub='All';render()"><span>${c}</span></button>${c!=="All"&&cat===c?`<div class="subcats"><button class="${sub==="All"?"active":""}" onclick="event.stopPropagation();window.marketSub='All';render()">All ${c}</button>${subcatsFor(c).map(t=>`<button class="${sub===t?"active":""}" onclick="event.stopPropagation();window.marketSub='${esc(t)}';render()"># ${esc(t)}</button>`).join("")}</div>`:""}`).join("")}</aside>
@@ -3559,10 +3853,66 @@ function toggleSaved(pid){if(!S.currentUser){openAuth('signin','save');return}S.
 function account(){return accountPanel()}
 
 /* -------------------- CONTACT -------------------- */
-function contact(){return `${header()}<main class="page"><div class="container"><div class="auth-box" style="max-width:700px"><button class="btn" onclick="goBack()">← Back</button><h1 style="margin-top:20px">Contact Us</h1><p class="muted">Need help with a product, store or account? Send a message directly to Sale Earn Support.</p><div class="form-grid"><div class="field"><label>User ID</label><input id="ctUserId" value="${esc(S.currentUser?.userId||S.currentUser?.id||"")}" placeholder="Enter your User ID"></div><div class="field"><label>Name</label><input id="ctName" value="${esc(S.currentUser?.name||"")}" placeholder="Your name"></div><div class="field"><label>Email</label><input id="ctEmail" value="${esc(S.currentUser?.email||"")}" placeholder="Your email"></div></div><div class="field"><label>Message</label><textarea id="ctMsg" placeholder="How can we help?"></textarea></div><button class="btn primary" onclick="sendContact()">Send Message</button><div class="dash-card" style="margin-top:15px"><b>Support email</b><p>MohitGhasoliya90014@gmail.com</p><small class="muted">Messages from this form are sent directly to this support inbox.</small><b>WhatsApp</b><p>Not available</p><b>Telegram</b><p><a style="color:var(--brand)" href="https://t.me/nextidea66" target="_blank" rel="noopener">@nextidea66</a></p></div></div></div></main>${footer()}`
+function contact(){return `${header()}<main class="page"><div class="container"><div class="auth-box" style="max-width:700px"><button class="btn" onclick="goBack()">← Back</button><h1 style="margin-top:20px">Contact Us</h1><p class="muted">Need help with a product, store or account? Send a message directly to Sale Earn Support.</p><div class="form-grid"><div class="field"><label>User ID</label><input id="ctUserId" value="${esc(S.currentUser?.userId||S.currentUser?.id||"")}" placeholder="Enter your User ID"></div><div class="field"><label>Name</label><input id="ctName" value="${esc(S.currentUser?.name||"")}" placeholder="Your name"></div><div class="field"><label>Email</label><input id="ctEmail" value="${esc(S.currentUser?.email||"")}" placeholder="Your email"></div></div><div class="form-grid"><div class="field"><label>Subject</label><input id="ctSubject" maxlength="160" placeholder="What do you need help with?"></div><div class="field"><label>First name <span class="muted">optional</span></label><input id="ctFirstName" placeholder="First name"></div><div class="field"><label>Last name <span class="muted">optional</span></label><input id="ctLastName" placeholder="Last name"></div></div><div class="field"><label>Message</label><textarea id="ctMsg" placeholder="How can we help?"></textarea></div><button class="btn primary" onclick="sendContact()">Send Message</button><div class="dash-card" style="margin-top:15px"><b>Support email</b><p>MohitGhasoliya90014@gmail.com</p><small class="muted">Messages from this form are stored securely in the Admin Mail Center.</small><b>WhatsApp</b><p>Not available</p><b>Telegram</b><p><a style="color:var(--brand)" href="https://t.me/nextidea66" target="_blank" rel="noopener">@nextidea66</a></p></div></div></div></main>${footer()}`
 }
-function sendContact(){
- const uid=document.getElementById("ctUserId")?.value.trim()||"Guest",
+let CONTACT_ADMIN_SYNC_BUSY=false;
+let CONTACT_ADMIN_POLL_TIMER=null;
+async function storeContactMessageCloud(payload){
+  if(!window.supabaseClient) return {ok:false,reason:"Supabase unavailable"};
+  const row={
+    name:String(payload.name||'Guest').slice(0,160),
+    email:String(payload.email||'').slice(0,320),
+    subject:String(payload.subject||'General Inquiry').slice(0,200),
+    message:String(payload.message||'').slice(0,10000),
+    user_id:payload.userId||null
+  };
+  try{
+    // Keep support messages in the Sale Earn database so an authenticated Admin
+    // can see them from any device. The public insert policy belongs in Supabase RLS.
+    const {data,error}=await window.supabaseClient.from("contact_messages").insert(row).select("*").maybeSingle();
+    if(error){
+      console.warn("contact_messages insert failed:",error.message||error);
+      return {ok:false,reason:error.message||"contact_messages insert failed"};
+    }
+    return {ok:true,row:data||null};
+  }catch(e){
+    console.warn("contact_messages insert failed:",e);
+    return {ok:false,reason:e?.message||"contact_messages insert failed"};
+  }
+}
+async function loadContactMessagesForAdmin(){
+  if(CONTACT_ADMIN_SYNC_BUSY||!isAdmin()||!window.supabaseClient)return;
+  CONTACT_ADMIN_SYNC_BUSY=true;
+  try{
+    const {data,error}=await window.supabaseClient.from("contact_messages").select("*").order("created_at",{ascending:false}).limit(300);
+    if(error){console.warn("Contact message inbox read failed:",error.message||error);return;}
+    if(!Array.isArray(data))return;
+    const existing=mailStore();
+    const map=new Map(existing.map(x=>[String(x.externalId||x.id),x]));
+    data.forEach(row=>{
+      const externalId=String(row.id||row.message_id||row.created_at||uid("contact"));
+      const from=String(row.email||row.from_email||row.sender_email||"Guest");
+      const name=String(row.name||row.full_name||row.sender_name||"Guest");
+      const msg=String(row.message||row.body||"");
+      const subject=String(row.subject||"Contact Support");
+      const item={id:`contact-${externalId}`,externalId,type:"contact",from:name,fromEmail:from,to:cfg().branding?.contactEmail||"Sale Earn Support",subject,body:msg,userId:row.user_id||row.userId||row.userid||null,productId:row.product_id||null,orderId:row.order_id||null,date:row.created_at||row.createdAt||nowISO(),read:!!row.read,starred:!!row.starred,cloudSynced:true};
+      const prev=map.get(externalId);
+      map.set(externalId,{...(prev||{}),...item});
+    });
+    S.mailMessages=Array.from(map.values()).sort((a,b)=>new Date(b.date)-new Date(a.date)).slice(0,500);
+    sePersist();
+    if(String(route()||"")==="admin/mail")render();
+  }catch(e){console.warn("Contact message inbox sync failed:",e);}
+  finally{
+    CONTACT_ADMIN_SYNC_BUSY=false;
+    clearTimeout(CONTACT_ADMIN_POLL_TIMER);
+    if(isAdmin()&&String(route()||"")==="admin/mail")CONTACT_ADMIN_POLL_TIMER=setTimeout(loadContactMessagesForAdmin,12000);
+  }
+}
+function stopContactAdminPolling(){clearTimeout(CONTACT_ADMIN_POLL_TIMER);CONTACT_ADMIN_POLL_TIMER=null;}
+
+async function sendContact(){
+ const uidValue=document.getElementById("ctUserId")?.value.trim()||S.currentUser?.userId||S.currentUser?.id||"Guest",
        first=document.getElementById("ctFirstName")?.value.trim()||"",
        last=document.getElementById("ctLastName")?.value.trim()||"",
        n=document.getElementById("ctName")?.value.trim()||[first,last].filter(Boolean).join(" "),
@@ -3570,14 +3920,37 @@ function sendContact(){
        m=document.getElementById("ctMsg")?.value.trim(),
        subject=document.getElementById("ctSubject")?.value.trim()||"General Inquiry";
  if(!n||!e||!m){toast("Please fill name, email and message");return}
- const btn=document.querySelector('[onclick="sendContact()"]'); if(btn){btn.disabled=true;btn.textContent="Sending…"}
- const body=`User ID: ${uid}\nName: ${n}\nEmail: ${e}\nSubject: ${subject}\n\nMessage:\n${m}`;
- fetch("https://formsubmit.co/ajax/MohitGhasoliya90014@gmail.com",{method:"POST",headers:{"Content-Type":"application/json","Accept":"application/json"},body:JSON.stringify({name:n,email:e,_subject:`Sale Earn Support — ${subject}`,message:body,_captcha:"false",_template:"table"})})
- .then(r=>{if(!r.ok)throw new Error("send failed");return r.json().catch(()=>({}))})
- .then(()=>{document.getElementById("ctMsg").value="";toast("Message sent successfully")})
- .catch(err=>{console.error(err);toast("Message could not be sent. Please try again")})
- .finally(()=>{if(btn){btn.disabled=false;btn.textContent="Send Message"}});
+ if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)){toast("Please enter a valid email address");return}
+ if(m.length>10000){toast("Message is too long");return}
+ const btn=document.querySelector('[onclick="sendContact()"]');
+ if(btn){btn.disabled=true;btn.textContent="Sending…"}
+ const body=`User ID: ${uidValue}\nName: ${n}\nEmail: ${e}\nSubject: ${subject}\n\nMessage:\n${m}`;
+ const localMsg={id:uid("mail"),type:"contact",from:n,fromEmail:e,to:cfg().branding?.contactEmail||"Sale Earn Support",subject,body,plainMessage:m,userId:S.currentUser?.authId||S.currentUser?.id||uidValue,date:nowISO(),read:false,starred:false,cloudSynced:false};
+ try{
+   const cloud=await storeContactMessageCloud({name:n,email:e,subject,message:m,userId:S.currentUser?.authId||S.currentUser?.id||null});
+   if(!cloud.ok)throw new Error(cloud.reason||"Could not save support message");
+   localMsg.cloudSynced=true;
+   localMsg.externalId=cloud.row?.id||cloud.row?.message_id||cloud.row?.created_at||null;
+   mailStore().unshift(localMsg);
+   if(mailStore().length>500)mailStore().length=500;
+   sePersist();
+   if(S.currentUser)save();
+   document.getElementById("ctMsg").value="";
+   toast("Message sent — Admin Mail Center has received it");
+ }catch(err){
+   console.error("Contact delivery failed:",err);
+   // Keep an unsent draft only on this device. Do not silently send customer data
+   // to an unrelated third-party mail service.
+   localMsg.cloudError=String(err?.message||err);
+   mailStore().unshift(localMsg);
+   if(mailStore().length>500)mailStore().length=500;
+   sePersist();
+   toast("Message could not reach Admin. Please try again shortly.");
+ }finally{
+   if(btn){btn.disabled=false;btn.textContent="Send Message"}
+ }
 }
+
 
 /* -------------------- PRIVATE ADMIN -------------------- */
 function isAdmin(){
@@ -3791,7 +4164,7 @@ function productManager(tab='live'){
  list.sort((a,b)=>{const ad=new Date(tab==='recycle'?(a.deletedAt||a.recycledAt):(a.createdAt||a.savedAt||0)).getTime(),bd=new Date(tab==='recycle'?(b.deletedAt||b.recycledAt):(b.createdAt||b.savedAt||0)).getTime();return sort==='oldest'?ad-bd:bd-ad});
  const counts=`<div class="pm-tabs"><button class="pm-tab ${tab==='live'?'active':''}" onclick="go('dashboard/products')">Live Products</button><button class="pm-tab ${tab==='drafts'?'active':''}" onclick="go('dashboard/drafts')">Drafts</button><button class="pm-tab ${tab==='recycle'?'active':''}" onclick="go('dashboard/recycle')">Recycle Bin${d.recycle.length?`<span class="pm-badge">${d.recycle.length}</span>`:''}</button></div>`;
  const available=tab==='live'?`${d.live.length} Live Products available`:tab==='drafts'?`${d.drafts.length} Drafts available`:`${d.recycle.length} Products available in Recycle Bin`;
- const controls=`<div class="pm-controls"><input class="input" placeholder="Search ${tab==='live'?'products':tab==='drafts'?'drafts':'recycle bin'}..." value="${esc(window.pmSearch||'')}" oninput="pmLiveSearch(this)"><select class="input" onchange="window.pmSort=this.value;render()"><option value="latest" ${sort==='latest'?'selected':''}>Latest</option><option value="oldest" ${sort==='oldest'?'selected':''}>Oldest</option></select><select class="input" onchange="window.pmDays=this.value;render()"><option value="0">All days</option><option value="7" ${days===7?'selected':''}>7 days</option><option value="14" ${days===14?'selected':''}>14 days</option><option value="21" ${days===21?'selected':''}>21 days</option><option value="30" ${days===30?'selected':''}>30 days</option></select><select class="input" onchange="window.pmCat=this.value;render()"><option value="ALL">All categories</option>${['Courses','Reel Bundle','Editing Assets','Software'].map(c=>`<option value="${c}" ${cat===c?'selected':''}>${c}</option>`).join('')}</select><div class="pm-view" aria-label="Product view"><button class="btn icon-view ${window.pmView==='list'?'':'primary'}" title="Grid view" aria-label="Grid view" onclick="window.pmView='grid';render()"><span aria-hidden="true">▦</span><span class="view-label">Grid</span></button><button class="btn icon-view ${window.pmView==='list'?'primary':''}" title="List view" aria-label="List view" onclick="window.pmView='list';render()"><span aria-hidden="true">☷</span><span class="view-label">List</span></button></div></div>`;
+ const controls=`<div class="pm-controls"><input class="input" placeholder="Search ${tab==='live'?'products':tab==='drafts'?'drafts':'recycle bin'}..." value="${esc(window.pmSearch||'')}" oninput="pmLiveSearch(this)"><select class="input" onchange="window.pmSort=this.value;render()"><option value="latest" ${sort==='latest'?'selected':''}>Latest</option><option value="oldest" ${sort==='oldest'?'selected':''}>Oldest</option></select><select class="input" onchange="window.pmDays=this.value;render()"><option value="0">All days</option><option value="7" ${days===7?'selected':''}>7 days</option><option value="14" ${days===14?'selected':''}>14 days</option><option value="21" ${days===21?'selected':''}>21 days</option><option value="30" ${days===30?'selected':''}>30 days</option></select><select class="input" onchange="window.pmCat=this.value;render()"><option value="ALL">All categories</option>${['Courses','Reel Bundle','Editing Assets','Templates'].map(c=>`<option value="${c}" ${cat===c?'selected':''}>${c}</option>`).join('')}</select><div class="pm-view" aria-label="Product view"><button class="btn icon-view ${window.pmView==='list'?'':'primary'}" title="Grid view" aria-label="Grid view" onclick="window.pmView='grid';render()"><span aria-hidden="true">▦</span><span class="view-label">Grid</span></button><button class="btn icon-view ${window.pmView==='list'?'primary':''}" title="List view" aria-label="List view" onclick="window.pmView='list';render()"><span aria-hidden="true">☷</span><span class="view-label">List</span></button></div></div>`;
  const bulk=`<div class="pm-bulk"><label><input type="checkbox" onchange="toggleAllPM(this.checked)"> Select All</label><button class="btn" onclick="toggleAllPM(false)">Deselect All</button><span id="pmSelectedCount">0 selected</span>${tab==='recycle'?`<button class="btn primary" onclick="bulkPM('restore')">Restore Selected</button><button class="btn danger" onclick="bulkPM('permanent')">Permanent Delete Selected</button>`:`<button class="btn danger" onclick="bulkPM('delete')">Delete Selected</button>`}</div>`;
  const listHtml=list.map(x=>productManagerCard(x,tab)).join('')||`<div class="pm-empty">No ${tab==='live'?'live products':tab==='drafts'?'drafts':'recycled products'} found.</div>`;
  const recycleNotice=tab==='recycle'&&d.recycle.length?`<div class="pm-recycle-notice"><b>Recycle Bin</b><span>Items are permanently deleted 7 days after moving here.</span><button class="btn danger" onclick="deleteAllDraftsFromRecycleBin()">Delete All Drafts from Recycle Bin</button></div>`:'';
@@ -4017,15 +4390,18 @@ function previewLogo(e){const f=e.target.files?.[0];if(!f)return;const r=new Fil
 function saveSettings(){const s=currentSeller();s.name=document.getElementById("setName").value.trim()||s.name;s.support=document.getElementById("setContact").value.trim();s.upi=document.getElementById("setUpi").value.trim();s.bio=document.getElementById("setBio").value;save();toast("Settings saved");render()}
 
 /* -------------------- ADD / EDIT PRODUCT -------------------- */
-const tagSuggestions=["Entertainment","Viral Reels","AI Reels","Editing","Transitions","SFX","Cartoon","Devotional","Hindi","Comedy","Software","Creator Tools","Education","Course","HD Reels","YouTube","Animals"];
+const tagSuggestions=["Entertainment","Viral Reels","AI Reels","Editing","Transitions","SFX","Cartoon","Devotional","Hindi","Comedy","Templates","Creator Tools","Education","Course","HD Reels","YouTube","Animals"];
 /* -------------------- PRODUCT SAFETY / MODERATION -------------------- */
 const SALE_EARN_PROHIBITED_PATTERNS=[
   /(^|\b)(pirated|piracy|crack(ed|ing)?|keygen|serial key|activation key|nulled|warez|leak(ed)?|stolen|counterfeit|fake license|bypass license|unlock(ed|ing)?)(\b|$)/i,
+  /(^|\b)(software download|downloadable software|software license|license key|activation code|app license|desktop software|paid software)(\b|$)/i,
   /(^|\b)(spam|bulk email|email list|mailing list|mass mailing|unsolicited email)(\b|$)/i,
   /(^|\b)(gambling|betting|lottery|casino|sports bet|online game for money|real money game)(\b|$)/i,
   /(^|\b)(hack(ing|er)?|crack(ing|er)?|exploit|credential theft|phishing|malware|ransomware|virus|keylogger|botnet)(\b|$)/i,
   /(^|\b)(fake id|fake passport|fake diploma|forged document|stolen account|account hack)(\b|$)/i,
-  /(^|\b)(illegal|illicit|unauthorized copy|unauthorised copy|copyright infringement)(\b|$)/i,
+  /(^|\b)(illegal|illicit|unauthorized copy|unauthorised copy|copyright infringement|pirated content|pirated media|movie clip|movie clips|tv clip|tv clips|cartoon clip|cartoon clips|song download|music download|book pdf|leaked course|leaked content)(\b|$)/i,
+  /(^|\b)(adult|sexually explicit|pornographic|escort)(\b|$)/i,
+  /(^|\b)(weapon|firearm|ammunition|explosive|knife)(\b|$)/i,
   /(^|\b)(get rich quick|pyramid scheme|matrix scheme|easy money guaranteed|guaranteed income)(\b|$)/i
 ];
 const SALE_EARN_SUSPICIOUS_PATTERNS=[
@@ -4038,6 +4414,8 @@ function productSafetyScan(data){
   SALE_EARN_PROHIBITED_PATTERNS.forEach((re,i)=>{if(re.test(fields))reasons.push('Prohibited or unauthorized-content indicator');});
   SALE_EARN_SUSPICIOUS_PATTERNS.forEach(re=>{if(re.test(fields))reasons.push('Suspicious or misleading marketing indicator');});
   if((data?.links||[]).some(u=>{try{return new URL(u).protocol!=='https:'}catch(e){return true}}))reasons.push('Non-HTTPS delivery link');
+  if((data?.links||[]).some(u=>!validSecureUrl(u)))reasons.push('Unapproved delivery provider');
+  if(String(data?.category||'').toLowerCase()==='software')reasons.push('Software downloads/intangible software goods are not eligible for this payment setup');
   return {flagged:reasons.length>0,reasons:[...new Set(reasons)]};
 }
 function markProductPendingReview(p,reason='Seller product submitted or edited'){
@@ -4070,7 +4448,7 @@ function productForm(step=1,editId=null){
  if(editId&&edit&&S.draft?._editId!==editId)S.draft={...structuredClone(edit),_editId:editId,links:[...(edit.links||[""])],linkTitles:(edit.linkTitles||edit.links?.map((_,i)=>`File ${i+1}`)||["File 1"]).slice()};
  const d=S.draft||blank,x=editId?(S.draft||edit||blank):d,plan=currentSeller()?.plan||"FREE",fee=({FREE:.20,CE:.10,PRIME:.10,ENTERPRISE:.05}[plan]??.20),rev=Number(x.price||0)*(1-fee),discount=x.oldPrice>0&&x.price<x.oldPrice?Math.max(0,Math.round((1-x.price/x.oldPrice)*100)):0;
  return dashShell(editId?"products":"add",`<div class="dash-form"><div class="stepper"><span class="step ${step===1?"active":""}">1 · Product Information</span><span class="step ${step===2?"active":""}">2 · Files & Details</span><span class="step ${step===3?"active":""}">3 · Pricing</span></div>
- ${step===1?`<div class="field"><label>Product Title *</label><input id="pfTitle" value="${esc(x.title)}"></div><div class="form-grid"><div class="field"><label>Category *</label><select id="pfCategory" onchange="S.draft=S.draft||{};S.draft.category=this.value;save()">${["Courses","Reel Bundle","Editing Assets","Software"].map(c=>`<option value="${c}" ${x.category===c?"selected":""}>${c}</option>`).join("")}</select></div><div class="field"><label>Tags / Keywords *</label><input id="tagInput" value="${esc((x.tags||[]).join(", "))}" placeholder="Entertainment, AI Reels"></div></div><div class="tag-suggest">${tagSuggestions.map(t=>`<button type="button" onclick="addDraftTag('${t}')">＋ ${t}</button>`).join("")}</div><div class="field"><label>Description *</label><textarea id="pfDesc">${esc(x.description||"")}</textarea></div><div class="dash-card"><h3 style="margin-top:0">Seller Product Checklist</h3><ul class="muted" style="line-height:1.8;padding-left:20px;margin-bottom:0"><li>Title, image, description, category and tags accurately describe the product.</li><li>Every delivery link has been tested and is expected to remain accessible.</li><li>The product contains only content you have the right or permission to distribute.</li><li>The listing does not contain prohibited, illegal, misleading or unauthorized material.</li><li>You are prepared to support buyers with reasonable product-specific questions.</li></ul></div>
+ ${step===1?`<div class="field"><label>Product Title *</label><input id="pfTitle" value="${esc(x.title)}"></div><div class="form-grid"><div class="field"><label>Category *</label><select id="pfCategory" onchange="S.draft=S.draft||{};S.draft.category=this.value;save()">${["Courses","Reel Bundle","Editing Assets","Templates"].map(c=>`<option value="${c}" ${x.category===c?"selected":""}>${c}</option>`).join("")}</select></div><div class="field"><label>Tags / Keywords *</label><input id="tagInput" value="${esc((x.tags||[]).join(", "))}" placeholder="Entertainment, AI Reels"></div></div><div class="tag-suggest">${tagSuggestions.map(t=>`<button type="button" onclick="addDraftTag('${t}')">＋ ${t}</button>`).join("")}</div><div class="field"><label>Description *</label><textarea id="pfDesc">${esc(x.description||"")}</textarea></div><div class="dash-card"><h3 style="margin-top:0">Seller Product Checklist</h3><ul class="muted" style="line-height:1.8;padding-left:20px;margin-bottom:0"><li>Title, image, description, category and tags accurately describe the product.</li><li>Every delivery link has been tested and is expected to remain accessible.</li><li>The product contains only content you have the right or permission to distribute.</li><li>The listing does not contain prohibited, illegal, misleading or unauthorized material.</li><li>You are prepared to support buyers with reasonable product-specific questions.</li></ul></div>
  <div class="dash-card" style="background:rgba(81,70,229,.05);border-color:rgba(81,70,229,.2)"><label style="display:flex;gap:10px;align-items:flex-start;cursor:pointer"><input id="pfRights" type="checkbox" ${x.rightsConfirmed?'checked':''} style="margin-top:4px"><span><b>I confirm I have the right/permission to sell or distribute this product.</b><br><small class="muted">I will not submit unauthorized copyrighted media/software, misleading products, spam-enabling products, illegal products, or other prohibited content.</small></span></label></div><div class="modal-footer"><button type="button" class="btn" onclick="goBack('dashboard/products')">← Back</button><button type="button" class="btn primary" onclick="saveStep1('${editId||""}')">Continue →</button></div>`
  :step===2?`<div class="field"><label>Product Image (max 2 MB, images only)</label><input type="file" accept="image/*" onchange="previewProductImage(event)" ${x.image?"":"required"}><div id="productPreview" class="logo-upload" style="width:260px;height:170px;margin-top:10px">${x.image?`<img src="${esc(x.image)}">`:"🖼️"}</div><small class="muted">JPG, PNG, WebP, GIF and other browser-recognized image formats. Maximum 2 MB.</small></div>
  <div class="form-grid"><div class="field"><label>Total Files</label><input id="pfCount" type="number" min="1" max="50" step="1" value="${esc(Math.min(50,x.fileCount||x.links?.length||1))}" oninput="syncFileLinksFromCount()"></div><div class="field"><label>File Size</label><div style="display:flex;gap:8px"><input id="pfSizeValue" type="number" min="0" step="0.01" value="${esc(x.fileSizeValue??(String(x.fileSize||"").match(/^([0-9.]+)/)?.[1]||""))}" placeholder="250" style="flex:1"><select id="pfSizeUnit" style="width:110px"><option ${String(x.fileSizeUnit||"MB")==="MB"?"selected":""}>MB</option><option ${String(x.fileSizeUnit||"MB")==="GB"?"selected":""}>GB</option></select></div><small class="muted">Enter numbers only, e.g. 250 MB or 1.5 GB.</small></div></div>
@@ -4882,11 +5260,11 @@ function mailSeed(){
   if(a.length)return;
   a.push({id:uid('mail'),type:'system',from:'Sale Earn',fromEmail:cfg().branding?.contactEmail||'',to:S.currentUser?.email||'',subject:'Welcome to Sale Earn Mail Center',body:'Your internal Sale Earn messages will appear here. Authentication OTP emails are delivered by Supabase Auth to the user’s email inbox.',date:nowISO(),read:false,starred:false});
 }
-window.mailOpen=function(id){mailSelected=id;const m=mailStore().find(x=>x.id===id);if(m){m.read=true;save();}render();};
+window.mailOpen=async function(id){mailSelected=id;const m=mailStore().find(x=>x.id===id);if(m){m.read=true;if(m.type==='contact'&&m.externalId&&window.supabaseClient){try{await window.supabaseClient.from('contact_messages').update({read:true}).eq('id',m.externalId);}catch(e){console.warn('Contact read update failed:',e)}}save();}render();};
 window.mailBack=function(){mailSelected=null;render();};
 window.mailTab=function(tab){mailTab=tab;mailSelected=null;render();};
-window.mailDelete=function(id){if(!adminOnly())return;S.mailMessages=mailStore().filter(x=>x.id!==id);mailSelected=null;save();render();};
-window.mailToggleStar=function(id){if(!adminOnly())return;const m=mailStore().find(x=>x.id===id);if(!m)return;m.starred=!m.starred;save();render();};
+window.mailDelete=async function(id){if(!adminOnly())return;const m=mailStore().find(x=>x.id===id);if(m?.type==='contact'&&m.externalId&&window.supabaseClient){try{await window.supabaseClient.from('contact_messages').delete().eq('id',m.externalId);}catch(e){console.warn('Contact delete failed:',e)}}S.mailMessages=mailStore().filter(x=>x.id!==id);mailSelected=null;save();render();};
+window.mailToggleStar=async function(id){if(!adminOnly())return;const m=mailStore().find(x=>x.id===id);if(!m)return;m.starred=!m.starred;if(m.type==='contact'&&m.externalId&&window.supabaseClient){try{await window.supabaseClient.from('contact_messages').update({starred:m.starred}).eq('id',m.externalId);}catch(e){console.warn('Contact star update failed:',e)}}save();render();};
 window.mailCompose=function(){
   if(!adminOnly())return;
   const users=(S.users||[]).filter(u=>u.email).map(u=>`<option value="${esc(u.email)}">${esc(u.name||u.email)} — ${esc(u.email)}</option>`).join('');
@@ -4904,6 +5282,7 @@ window.mailReply=function(id){if(!adminOnly())return;const src=mailStore().find(
 window.mailSendReply=function(id){if(!adminOnly())return;const src=mailStore().find(x=>x.id===id),subject=String(document.getElementById('mailReplySubject')?.value||'').trim(),body=String(document.getElementById('mailReplyBody')?.value||'').trim();if(!src||!subject||!body)return toast('Subject and reply are required');const m={id:uid('mail'),threadId:src.threadId||uid('thread'),inReplyTo:src.id,type:'sent',from:S.currentUser?.name||'Sale Earn Admin',fromEmail:S.currentUser?.email||'',to:src.fromEmail||'',subject,body,date:nowISO(),read:true,starred:false,userId:src.userId||null,sellerId:src.sellerId||null,warningId:src.warningId||null,productId:src.productId||null};mailStore().unshift(m);src.read=true;if(mailStore().length>500)mailStore().length=500;save();closeModal();mailTab='sent';mailSelected=m.id;render();toast('Reply sent to user')};
 function mailPanel(){
   mailSeed();
+  if(String(route()||"")==='admin/mail')loadContactMessagesForAdmin(); else stopContactAdminPolling();
   const all=mailStore().slice().sort((a,b)=>new Date(b.date)-new Date(a.date));
   const selected=mailSelected?all.find(x=>x.id===mailSelected):null;
   const unread=all.filter(x=>!x.read&&x.type!=='sent').length;
@@ -4912,7 +5291,7 @@ function mailPanel(){
   const active=mailTab==='sent'?sent:inbox;
   const rows=active.map(m=>`<button class="mail-row ${m.read?'':'unread'} ${selected?.id===m.id?'selected':''}" onclick="mailOpen('${esc(m.id)}')"><span class="mail-avatar">${esc(initials(m.type==='sent'?m.to:m.from))}</span><span class="mail-row-main"><strong>${esc(m.type==='sent'?'To: '+m.to:(m.from||'Sale Earn'))}</strong><span>${esc(m.subject||'(No subject)')}</span><small>${esc(String(m.body||'').replace(/\s+/g,' ').slice(0,95))}</small></span><span class="mail-row-side"><button class="mail-star ${m.starred?'on':''}" onclick="event.stopPropagation();mailToggleStar('${esc(m.id)}')" aria-label="Star">${m.starred?'★':'☆'}</button><small>${when(m.date)}</small></span></button>`).join('')||`<div class="mail-empty"><div class="mail-empty-icon">✉</div><h3>No messages</h3><p>${mailTab==='sent'?'Sent messages will appear here.':'Your inbox is clear.'}</p></div>`;
   const detail=selected?`<div class="mail-detail"><div class="mail-detail-head"><button class="btn" onclick="mailBack()">← Back</button><div class="mail-detail-actions">${selected.type!=='sent'?`<button class="btn primary" onclick="mailReply('${esc(selected.id)}')">↩ Reply</button>`:''}<button class="btn" onclick="mailToggleStar('${esc(selected.id)}')">${selected.starred?'★ Starred':'☆ Star'}</button><button class="btn danger" onclick="mailDelete('${esc(selected.id)}')">Delete</button></div></div><div class="mail-detail-title"><div class="mail-avatar large">${esc(initials(selected.type==='sent'?selected.to:selected.from))}</div><div><h2>${esc(selected.subject||'(No subject)')}</h2><div class="muted small">${selected.type==='sent'?'To: '+esc(selected.to):'From: '+esc(selected.from||'Sale Earn')} · ${esc(new Date(selected.date).toLocaleString('en-IN'))}</div></div></div>${selected.warningId?`<div class="mail-context"><b>Warning message</b><span>${esc(selected.warningId)}</span>${selected.productId?`<button class="btn" onclick="adminNav('product/${esc(selected.productId)}')">Open product</button>`:''}${selected.resolutionRequested?'<span class="admin-pill warn">Resolution review requested</span>':''}</div>`:''}<div class="mail-detail-body">${esc(selected.body||'').replace(/\n/g,'<br>')}</div></div>`:`<div class="mail-list"><div class="mail-list-head"><div><b>${mailTab==='sent'?'Sent':'Inbox'}</b><span class="mail-count">${active.length}</span></div><button class="btn primary" onclick="mailCompose()">+ Compose</button></div>${rows}</div>`;
-  return adminLayout('mail','Mail Center',`${titleBlock('COMMUNICATION','Mail Center','A clean internal message center for Sale Earn users and admin communication.')}<div class="mail-shell"><aside class="mail-sidebar"><button class="mail-compose-btn" onclick="mailCompose()">✎ Compose</button><button class="mail-nav ${mailTab==='inbox'?'active':''}" onclick="mailTab('inbox')">✉ Inbox ${unread?`<span>${unread}</span>`:''}</button><button class="mail-nav ${mailTab==='sent'?'active':''}" onclick="mailTab('sent')">↗ Sent <span>${sent.length}</span></button><div class="mail-info-card"><strong>SMTP connected</strong><p>Auth OTP delivery is handled securely by Supabase SMTP.</p><small>${esc(cfg().branding?.emailSenderName||'Sale Earn')}</small></div></aside><section class="mail-main">${detail}</section></div>`);
+  return adminLayout('mail','Mail Center',`${titleBlock('COMMUNICATION','Mail Center','A clean internal message center for Sale Earn users and admin communication.')}<div class="mail-shell"><aside class="mail-sidebar"><button class="mail-compose-btn" onclick="mailCompose()">✎ Compose</button><button class="mail-nav" onclick="loadContactMessagesForAdmin().then(()=>render())">↻ Refresh inbox</button><button class="mail-nav ${mailTab==='inbox'?'active':''}" onclick="mailTab('inbox')">✉ Inbox ${unread?`<span>${unread}</span>`:''}</button><button class="mail-nav ${mailTab==='sent'?'active':''}" onclick="mailTab('sent')">↗ Sent <span>${sent.length}</span></button><div class="mail-info-card"><strong>SMTP connected</strong><p>Auth OTP delivery is handled securely by Supabase SMTP.</p><small>${esc(cfg().branding?.emailSenderName||'Sale Earn')}</small></div></aside><section class="mail-main">${detail}</section></div>`);
 }
 window.mailPanel=mailPanel;
 window.studioMenu=function(){mobileOpen=!mobileOpen;document.body.classList.toggle('as-menu-open',mobileOpen);};
@@ -5858,6 +6237,34 @@ RAZORPAY TEST SETUP
 .badge-stage .product-badge.ribbon::after{content:'';position:absolute;right:-1px;bottom:0;width:14px;height:14px;background:linear-gradient(225deg,#72000a 0 49%,transparent 50%)}
 </style>
 
+
+<style id="saleearn-full-interaction-hardening">
+/* Sale Earn interaction layer: consistent, accessible hover/focus feedback without changing actions. */
+:where(.policy-card,.se-legal-section,.se-legal-highlight,.se-legal-grid>div,.se-guide-card,.se-guide-practice,.se-guide-product-grid>div,.se-faq-item,.se-contact-card,.se-contact-trust>div,.se-about-feature,.se-about-mini,.se-about-core>div,.se-about-step,.se-about-stat,.sitemap-card,.pricing-card,.faq-card,.contact-card,.admin-card,.dash-card,.mail-row,.mail-detail,.admin-kpi,.data-card,.product-card,.seller-card,.stat-card,.settings-card,.security-row,.warning-card,.review-card,.payout-card,.order-card,.analytics-card){transition:transform .18s ease,box-shadow .18s ease,border-color .18s ease,background-color .18s ease,filter .18s ease;}
+:where(.policy-card,.se-legal-section,.se-legal-highlight,.se-legal-grid>div,.se-guide-card,.se-guide-practice,.se-guide-product-grid>div,.se-faq-item,.se-contact-card,.se-contact-trust>div,.se-about-feature,.se-about-mini,.se-about-core>div,.se-about-step,.se-about-stat,.sitemap-card,.pricing-card,.faq-card,.contact-card,.admin-card,.dash-card,.mail-row,.mail-detail,.admin-kpi,.data-card,.product-card,.seller-card,.stat-card,.settings-card,.security-row,.warning-card,.review-card,.payout-card,.order-card,.analytics-card):hover{transform:translateY(-3px) scale(1.012);box-shadow:0 14px 36px rgba(79,70,229,.14);border-color:color-mix(in srgb,var(--brand,#5146e5) 38%,currentColor);}
+:where(.policy-card,.se-legal-section,.se-guide-card,.se-faq-item,.se-contact-card,.se-about-feature,.se-about-mini,.admin-card,.dash-card,.mail-row,.admin-kpi,.data-card,.product-card,.seller-card,.settings-card):focus-within{box-shadow:0 0 0 3px rgba(99,102,241,.18),0 14px 36px rgba(79,70,229,.12);border-color:rgba(99,102,241,.65);}
+.mail-nav{cursor:pointer}
+.mail-nav:hover{transform:translateX(3px)}
+@media (prefers-reduced-motion:reduce){:where(.policy-card,.se-legal-section,.se-guide-card,.se-faq-item,.se-contact-card,.se-about-feature,.se-about-mini,.admin-card,.dash-card,.mail-row,.admin-kpi,.data-card,.product-card,.seller-card,.settings-card):hover{transform:none}}
+</style>
+<script>
+/* Final integrity checks: stop public purchase access to rejected/pending products and
+   make the policy guard reusable from every purchase route. */
+(function(){
+  const originalCanShow=window.canShowProduct;
+  if(typeof originalCanShow==='function'){
+    window.canShowProduct=function(p){
+      if(!p)return false;
+      const status=String(p.status||'APPROVED').toUpperCase();
+      if(p.hiddenByAdmin===true||['REJECTED','PENDING','UNDER_REVIEW','DRAFT'].includes(status))return false;
+      const scan=typeof productSafetyScan==='function'?productSafetyScan(p):{flagged:false};
+      return !scan.flagged;
+    };
+  }
+  // Keep the support inbox refresh alive only while the admin is viewing Mail Center.
+  document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&typeof route==='function'&&String(route()||'')==='admin/mail'&&typeof loadContactMessagesForAdmin==='function')loadContactMessagesForAdmin();});
+})();
+</script>
 </body>
 <!-- Sale Earn v21: Badge Studio, Games, Messages, Verification & Final-Amount Finance -->
 <style id="saleearn-v21-style">
@@ -5972,7 +6379,7 @@ const CATS={
  'Courses':{emoji:'🎓',tags:['Business','Design','Coding','Marketing','Finance','Language','Fitness','AI']},
  'Reel Bundle':{emoji:'🎬',tags:['Viral','Comedy','Cartoon','Devotion','Animals','Facts','Motivate','Gaming']},
  'Editing Assets':{emoji:'✂️',tags:['Presets','LUTs','SFX','Fonts','Overlays','Template','Motion','Thumbs']},
- 'Software':{emoji:'💻',tags:['Windows','Android','Tools','Utility','Creator','Security','Business','AI']},
+ 'Templates':{emoji:'🧩',tags:['Templates','Creator','Productivity','Design','Editing']},
  'Games':{emoji:'🎮',tags:['PC','Mobile','Action','Racing','Puzzle','Sports','Arcade','Strategy']}
 };
 function v22Ledger(){const sid=currentSeller()?.id||S.currentUser?.sellerId||'guest';S.badgeLedgers=S.badgeLedgers||{};const st=S.badgeLedgers[sid]||(S.badgeLedgers[sid]={freeLimit:3,price:3,credits:0,placedProductIds:[],purchases:[]});st.actionLog=Array.isArray(st.actionLog)?st.actionLog:[];st.actionsUsed=Number.isFinite(Number(st.actionsUsed))?Number(st.actionsUsed):st.placedProductIds.length;return st}
@@ -5993,7 +6400,7 @@ window.v22CategoryChanged=function(v){const before=catValue();saveStepOneInputs(
 window.v22AddCategoryTag=function(tag){const e=document.getElementById('tagInput');if(!e)return;const a=e.value.split(',').map(x=>x.trim()).filter(Boolean);if(!a.includes(tag))a.push(tag);e.value=a.join(', ');S.draft=S.draft||{};S.draft.tags=a;save();document.querySelectorAll('[data-cat-tag]').forEach(b=>b.classList.toggle('active',a.includes(b.dataset.catTag)))};
 const productForm21=productForm;productForm=function(step=1,editId=null){const html=productForm21(step,editId);if(step!==1)return html;const tpl=document.createElement('template');tpl.innerHTML=html;const sel=tpl.content.querySelector('#pfCategory'),cat=sel?.value||S.draft?.category||'Reel Bundle';if(sel){sel.innerHTML=Object.entries(CATS).map(([name,x])=>`<option value="${esc(name)}" ${cat===name?'selected':''}>${x.emoji} ${esc(name)}</option>`).join('');sel.setAttribute('onchange','v22CategoryChanged(this.value)')}tpl.content.querySelector('.tag-suggest')?.remove();tpl.content.querySelector('.game-tag-panel')?.remove();const tag=tpl.content.querySelector('#tagInput');if(tag){tag.placeholder='Choose suggestions below or type comma-separated tags';tag.closest('.field')?.insertAdjacentHTML('afterend',`<div class="category-tag-panel"><h4>${CATS[cat]?.emoji||'🏷️'} ${esc(cat)} subcategories & tags</h4><div class="small muted">Only category-relevant suggestions are shown. You can also type a custom tag.</div><div class="category-tag-buttons">${catTags(cat).map(t=>`<button type="button" class="btn ${(S.draft?.tags||[]).includes(t)?'active':''}" data-cat-tag="${esc(t)}" onclick="v22AddCategoryTag('${esc(t)}')">＋ ${esc(t)}</button>`).join('')}</div></div>`)}return tpl.innerHTML};
 
-function emojiCategories(){const map={'All':'🛍️','Courses':'🎓','Reel Bundle':'🎬','Editing Assets':'✂️','Software':'💻','Games':'🎮'};document.querySelectorAll('.sidebar-filter .filter-cat').forEach(b=>{const text=b.textContent.replace(/[🛍️🎓🎬✂️💻🎮›]/gu,'').trim();const key=Object.keys(map).find(k=>text===k||text.endsWith(k));if(key)b.innerHTML=`<span><span class="category-filter-icon">${map[key]}</span>${esc(key)}</span>`});const game=document.querySelector('[data-game-filter]');if(game)game.innerHTML='<span><span class="category-filter-icon">🎮</span>Games</span>'}
+function emojiCategories(){const map={'All':'🛍️','Courses':'🎓','Reel Bundle':'🎬','Editing Assets':'✂️','Templates':'🧩','Games':'🎮'};document.querySelectorAll('.sidebar-filter .filter-cat').forEach(b=>{const text=b.textContent.replace(/[🛍️🎓🎬✂️💻🎮›]/gu,'').trim();const key=Object.keys(map).find(k=>text===k||text.endsWith(k));if(key)b.innerHTML=`<span><span class="category-filter-icon">${map[key]}</span>${esc(key)}</span>`});const game=document.querySelector('[data-game-filter]');if(game)game.innerHTML='<span><span class="category-filter-icon">🎮</span>Games</span>'}
 
 window.youtubeId=window.youtubeId||function(u){return String(u||'').match(/(?:youtu\.be\/|v=|embed\/)([\w-]{11})/)?.[1]||''};
 const sellerProfile21=sellerProfile;sellerProfile=function(id){try{const sid=decodeURIComponent(String(id||'').trim()),exists=!!S.sellers?.[sid];if(!sid||!exists)return `${header()}<main class="page"><div class="container auth-box seller-view-error"><h2>Seller store not found</h2><p class="muted">This store ID is unavailable or has changed.</p><button class="btn primary" onclick="go('market')">Open Marketplace</button></div></main>${footer()}`;return sellerProfile21(sid)}catch(e){console.error('Seller profile open failed',e);return `${header()}<main class="page"><div class="container auth-box seller-view-error"><h2>Could not open this store</h2><p class="muted">Please return to the dashboard and try again.</p><button class="btn" onclick="goBack()">← Back</button></div></main>${footer()}`}};
