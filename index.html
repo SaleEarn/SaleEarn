@@ -2023,67 +2023,41 @@ function razorpaySafeDescription(value){
 
 async function sendTransactionEmails(order, product){
   try{
-    // Only notify after a verified successful purchase.
-    if(!window.supabaseClient || !order || order.status!=='SUCCESS' || order.paymentVerified!==true) return {ok:false,skipped:true};
+    if(!window.supabaseClient || !order || String(order.status||'').toUpperCase()!=='SUCCESS' || order.paymentVerified!==true) return {ok:false,skipped:true};
 
-    const seller=(S.users||[]).find(u=>
-      String(u.id||u.userId||u.authId||"")===String(order.sellerId||"") ||
-      String(u.authId||"")===String(order.sellerId||"") ||
-      String(u.email||"").toLowerCase()===String(product?.sellerEmail||"").toLowerCase()
-    );
+    const buyerId=String(order.customerId||order.buyerId||order.userId||S.currentUser?.id||'').trim();
+    const sellerId=String(order.sellerId||product?.sellerId||'').trim();
+    const buyerEmail=String(order.customerEmail||order.buyerEmail||S.currentUser?.email||'').trim();
+    const seller=(S.users||[]).find(u=>String(u.id||'')===sellerId || String(u.userId||'')===sellerId || String(u.authId||'')===sellerId || String(u.email||'').toLowerCase()===String(product?.sellerEmail||'').toLowerCase());
+    const sellerEmail=String(seller?.email||order.sellerEmail||product?.sellerEmail||'').trim();
+    if(!buyerEmail && !sellerEmail) return {ok:false,skipped:true,error:'Buyer and seller email are missing'};
 
-    const siteUrl=String(window.location.origin||"").replace(/\/$/,"");
+    const siteUrl=String(window.location.origin||'').replace(/\/$/,'');
     const salesUrl=`${siteUrl}/#dashboard/orders`;
-    const accessUrl=String(
-      product?.links?.[0] || product?.accessUrl || product?.deliveryUrl ||
-      product?.secretLink || order.deliveryUrl || order.accessUrl || ""
-    ).trim();
+    const accessUrl=String((product?.links&&product.links[0])||product?.secretLink||product?.deliveryUrl||product?.downloadUrl||order.deliveryUrl||'').trim();
 
     const payload={
-      type:"product_purchase",
+      type:'product_purchase',
       order:{
-        id:order.id,
-        productId:order.productId,
-        productTitle:order.productTitle||product?.title||"Digital product",
-        sellerId:order.sellerId||product?.sellerId||"",
-        customerId:order.customerId||S.currentUser?.id||"",
-        buyerEmail:order.customerEmail||S.currentUser?.email||"",
-        sellerEmail:seller?.email||product?.sellerEmail||"",
-        buyerName:order.customerName||S.currentUser?.name||"Buyer",
-        sellerName:seller?.name||seller?.display_name||"Seller",
-        amount:Number(order.amount||0),
-        originalAmount:Number(order.originalAmount||0),
-        platformFeeRate:Number(order.platformFeeRate||0),
-        platformFee:Number(order.platformFee||0),
-        netSellerAmount:Number(order.netSellerAmount||0),
-        commission:Number(order.platformFee||order.commission||0),
-        earnings:Number(order.netSellerAmount||0),
-        date:order.date,
-        method:order.method,
-        status:order.status,
-        paymentVerified:order.paymentVerified===true,
-        gatewayPaymentId:order.gatewayPaymentId,
-        razorpayOrderId:order.razorpayOrderId,
-        accessUrl,
-        salesUrl
+        ...order,
+        id:order.id, productId:order.productId, productTitle:product?.title||order.productTitle,
+        status:'SUCCESS', paymentVerified:true,
+        customerId:buyerId, sellerId:sellerId,
+        customerName:order.customerName||S.currentUser?.name||'Customer',
+        customerEmail:buyerEmail, buyerEmail:buyerEmail, sellerEmail:sellerEmail,
+        gatewayPaymentId:order.gatewayPaymentId||'', razorpayOrderId:order.razorpayOrderId||'',
+        accessUrl, salesUrl
       },
-      buyer:{name:order.customerName||S.currentUser?.name||"Buyer",email:order.customerEmail||S.currentUser?.email||""},
-      seller:{name:seller?.name||seller?.display_name||"Seller",email:seller?.email||product?.sellerEmail||""},
-      product:{
-        title:product?.title||order.productTitle||"Digital product",
-        image:product?.image||"",
-        sellerId:product?.sellerId||order.sellerId||"",
-        sellerEmail:product?.sellerEmail||seller?.email||"",
-        accessUrl
-      }
+      buyer:{name:order.customerName||S.currentUser?.name||'Customer',email:buyerEmail,id:buyerId},
+      seller:{name:seller?.name||seller?.display_name||product?.sellerName||'Seller',email:sellerEmail,id:sellerId},
+      product:{...product,title:product?.title||order.productTitle||'Digital Product',sellerId:sellerId,accessUrl}
     };
 
-    const {data,error}=await window.supabaseClient.functions.invoke("send-transaction-emails",{body:payload});
+    const {data,error}=await window.supabaseClient.functions.invoke('send-transaction-emails',{body:payload});
     if(error) throw error;
-    console.log("Sale Earn transaction email result:",data);
-    return data||{ok:true};
+    return data||{ok:false};
   }catch(e){
-    console.warn("Transaction email notification failed:",e);
+    console.warn('Transaction email notification failed:',e);
     return {ok:false,error:e?.message||String(e)};
   }
 }
