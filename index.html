@@ -3399,6 +3399,9 @@ function openBuy(id){
  <div class="modal-footer"><button class="btn" onclick="closeModal()">Cancel</button><button class="btn primary" onclick="continuePayment('${id}')">Pay ${money(Number(window.pendingBuy?.amount??p.price))} with Razorpay</button></div></div></div>`
 }
 function continuePayment(id){
+ if(!window.payMethod || !(ensurePlatformConfig().payment?.methods||[]).includes(window.payMethod)){
+   window.payMethod = (ensurePlatformConfig().payment?.methods||[])[0] || 'UPI';
+ }
  if(window.pendingBuy?.guest){const n=(window.pendingBuy.name||document.getElementById("buyName")?.value||"").trim(),e=(window.pendingBuy.email||document.getElementById("buyEmail")?.value||"").trim().toLowerCase();if(!n||!e){toast("Name and email are required");return}window.pendingBuy={...window.pendingBuy,id,name:n,email:e,userId:guestBuyerId(e),guest:true};testPay();return}
  const n=S.currentUser?.name?.trim(),e=S.currentUser?.email?.trim();
  if(!n||!e){toast("Verified account details are required");return}
