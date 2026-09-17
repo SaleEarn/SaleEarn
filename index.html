@@ -6411,7 +6411,7 @@ const productCard20=productCard;productCard=function(p){const html=productCard20
 function v21InjectBadge(){const r=route();if(!/dashboard\/(add$|add3|edit\/)/.test(r))return;const form=document.querySelector('.dash-form');if(!form||form.querySelector('.badge-builder-entry'))return;const id=r.startsWith('dashboard/edit/')?r.split('/')[2]:'';const target=id?product(id):S.draft;const card=`<div class="dash-card badge-builder-entry"><h3>Product Badge</h3><p class="muted">Same badge preview is connected across Product Information and Pricing.</p><div class="badge-form-preview">${target?.badge?`<div class="badge-stage">${v21BadgeHTML(target)}</div>`:'<span class="muted">No badge selected</span>'}</div><button type="button" class="btn primary" onclick="openBadgeDesigner('${esc(id)}')">Choose / Design Badge</button></div>`;if(r.includes('add3')){const footer=form.querySelector('.modal-footer');footer?.insertAdjacentHTML('beforebegin',card)}else{const footer=form.querySelector('.modal-footer');footer?.insertAdjacentHTML('beforebegin',card)}};
 
 // ---------- Product validation and Games ----------
-const productForm20=productForm;productForm=function(step=1,editId=null){let html=productForm20(step,editId),tpl=document.createElement('template');tpl.innerHTML=html;const cat=tpl.content.querySelector('#pfCategory');if(cat&&!cat.querySelector('option[value="Games"]'))cat.insertAdjacentHTML('beforeend',`<option value="Games" ${(S.draft?.category==='Games'||product(editId)?.category==='Games')?'selected':''}>Games</option>`);const desc=tpl.content.querySelector('#pfDesc');if(desc){desc.maxLength=5000;desc.insertAdjacentHTML('afterend','<small class="char-count" data-count-for="pfDesc">'+String(desc.value.length)+'/5000</small>');desc.setAttribute('oninput',"v21InputCount('pfDesc',5000)")};const tags=tpl.content.querySelector('#tagInput');if(tags){tags.maxLength=100;tags.insertAdjacentHTML('afterend','<small class="char-count" data-count-for="tagInput">'+String(tags.value.length)+'/100 · each word max 10</small>');tags.setAttribute('oninput',"v21InputCount('tagInput',100)")};if(step===1){const grid=tpl.content.querySelector('.tag-suggest');grid?.insertAdjacentHTML('afterend',`<div class="game-tag-panel"><b>Games subcategories</b><div class="small muted">Choose PC or Mobile, then add tags such as Action, Racing, Puzzle, Sports, Arcade or Strategy.</div>${['PC','Mobile','Action','Racing','Puzzle','Sports','Arcade','Strategy'].map(t=>`<button type="button" class="btn" onclick="addDraftTag('${t}')">＋ ${t}</button>`).join('')}</div>`)}return tpl.innerHTML};
+const productForm20=productForm;productForm=function(step=1,editId=null){let html=productForm20(step,editId),tpl=document.createElement('template');tpl.innerHTML=html;const cat=tpl.content.querySelector('#pfCategory');if(cat&&!cat.querySelector('option[value="Games"]'))cat.insertAdjacentHTML('beforeend',`<option value="Games" ${(S.draft?.category==='Games'||product(editId)?.category==='Games')?'selected':''}>Games</option>`);const desc=tpl.content.querySelector('#pfDesc');if(desc){desc.maxLength=5000;desc.insertAdjacentHTML('afterend','<small class="char-count" data-count-for="pfDesc">'+String(desc.value.length)+'/5000</small>');desc.setAttribute('oninput',"v21InputCount('pfDesc',5000)")};const tags=tpl.content.querySelector('#tagInput');if(tags){tags.maxLength=100;tags.insertAdjacentHTML('afterend','<small class="char-count" data-count-for="tagInput">'+String(tags.value.length)+'/100 · max 3 tags · up to 14 words each</small>');tags.setAttribute('oninput',"v21InputCount('tagInput',100)")};if(step===1){const grid=tpl.content.querySelector('.tag-suggest');grid?.insertAdjacentHTML('afterend',`<div class="game-tag-panel"><b>Games subcategories</b><div class="small muted">Choose PC or Mobile, then add tags such as Action, Racing, Puzzle, Sports, Arcade or Strategy.</div>${['PC','Mobile','Action','Racing','Puzzle','Sports','Arcade','Strategy'].map(t=>`<button type="button" class="btn" onclick="addDraftTag('${t}')">＋ ${t}</button>`).join('')}</div>`)}return tpl.innerHTML};
 const saveStep120=saveStep1;saveStep1=function(editId){const title=(document.getElementById('pfTitle')?.value||'').trim(),tagText=(document.getElementById('tagInput')?.value||'').trim(),desc=(document.getElementById('pfDesc')?.value||'').trim();if(title.length>400)return toast('Product title maximum 400 characters');if(desc.length>5000)return toast('Description maximum 5000 characters');if(tagText.length>100)return toast('All tags together can use maximum 100 characters');const words=tagText.split(/[\s,]+/).filter(Boolean),long=words.find(x=>x.length>10);if(long)return toast('Tag word “'+long+'” is longer than 10 characters');return saveStep120(editId)};
 
 // ---------- Separate Warning requests ----------
@@ -7531,6 +7531,191 @@ html:root[data-theme="dark"] .ad-premium{background:linear-gradient(135deg,#0f19
     window.__seLastSection = newSection;
     return r;
   };
+})();
+</script>
+
+<script>
+(function(){
+  'use strict';
+
+  /* ---------- 1) Tags: max 3 tags, max 14 words per tag ---------- */
+  const seTagLimitPrev = window.saveStep1;
+  window.saveStep1 = function(editId){
+    const tagText = (document.getElementById('tagInput')?.value || '').trim();
+    if(tagText){
+      const tagsArr = tagText.split(',').map(x=>x.trim()).filter(Boolean);
+      if(tagsArr.length > 3) return toast('Maximum 3 tags allowed');
+      const tooLong = tagsArr.find(t => t.split(/\s+/).filter(Boolean).length > 14);
+      if(tooLong) return toast('Each tag can have a maximum of 14 words');
+    }
+    return seTagLimitPrev(editId);
+  };
+
+  /* ---------- 2) Admin reject -> ask for a reason ---------- */
+  const seOldPCAction = window.adminProductCheckAction;
+  window.adminProductCheckAction = function(id, kind){
+    if(kind === 'reject'){
+      if(!adminOnly()) return;
+      const p = product(id); if(!p) return toast('Product not found');
+      const reason = prompt('Reason for rejecting this product (the seller will see this):', '');
+      if(reason === null) return;
+      const finalReason = reason.trim() || 'Product does not meet Sale Earn marketplace rules';
+      rejectProductByAdmin(p, finalReason);
+      adminAudit('Rejected product after safety review', p.id, {productId:p.id, sellerId:p.sellerId, reason:finalReason});
+      save();
+      toast('Product rejected and hidden from marketplace.');
+      render();
+      return;
+    }
+    return seOldPCAction ? seOldPCAction(id, kind) : undefined;
+  };
+
+  /* ---------- 3) Seller reply to a rejected product + admin viewing replies ---------- */
+  window.sellerReplyToRejection = function(id){
+    const p = product(id); if(!p) return;
+    const msg = prompt('Reply to admin about this rejection:', '');
+    if(msg === null) return;
+    const text = msg.trim(); if(!text) return;
+    p.sellerReplies = p.sellerReplies || [];
+    p.sellerReplies.push({id: uid('reply'), text, date: nowISO(), by:'seller'});
+    p.adminUnseenReply = true;
+    save();
+    toast('Reply sent to admin');
+    render();
+  };
+  window.adminViewProductReplies = function(id){
+    const p = product(id); if(!p) return;
+    const replies = p.sellerReplies || [];
+    const body = replies.length ? replies.map(r=>`<div class="security-row"><div><b>Seller</b><div class="small muted">${new Date(r.date).toLocaleString('en-IN')}</div><div>${esc(r.text)}</div></div></div>`).join('') : '<div class="admin-empty">No replies yet.</div>';
+    p.adminUnseenReply = false; save();
+    document.getElementById('modalRoot').innerHTML = `<div class="modal-bg" onclick="if(event.target===this)closeModal()"><div class="modal"><button class="btn iconbtn close" onclick="closeModal()">×</button><h2>Seller replies — ${esc(p.title||'')}</h2>${body}<div class="modal-footer"><button class="btn" onclick="closeModal()">Close</button></div></div></div>`;
+    render();
+  };
+
+  /* ---------- 4) Admin sidebar: red count badge on "Products" (pending + unseen replies) ---------- */
+  const seOldAdminSidebar = adminSidebar;
+  adminSidebar = function(active){
+    let html = seOldAdminSidebar(active);
+    const ps = S.products||[];
+    const need = ps.filter(p=>(p.approvalStatus||'APPROVED')==='PENDING' || p.adminUnseenReply===true).length;
+    if(need>0){
+      const badge = `<span style="margin-left:auto;min-width:20px;height:20px;border-radius:999px;background:#ef5b68;color:#fff;font-size:10px;font-weight:900;display:inline-flex;align-items:center;justify-content:center;padding:0 5px">${need}</span>`;
+      html = html.replace(/(<button class="admin-link[^>]*onclick="adminNav\('products'\)"[^>]*>)([\s\S]*?)(<\/button>)/,
+        (m,a,mid,b)=> a + mid + badge + b);
+    }
+    return html;
+  };
+
+  /* ---------- 5) Admin "Products" page: status badges, filter tabs, approve/reject, replies ---------- */
+  window.adminProducts = function(){
+    const ps = S.products||[];
+    const tab = window.apTab||'ALL';
+    const tabs = [['ALL','All'],['PENDING','Pending'],['APPROVED','Approved'],['REJECTED','Rejected'],['CHECKED','Checked'],['VERIFIED','Verified']];
+    const countFor = id => id==='ALL'?ps.length
+      : id==='CHECKED'?ps.filter(p=>p.adminChecked).length
+      : id==='VERIFIED'?ps.filter(p=>p.adminVerified).length
+      : ps.filter(p=>(p.approvalStatus||'APPROVED')===id).length;
+    let list = ps;
+    if(tab==='CHECKED') list = ps.filter(p=>p.adminChecked);
+    else if(tab==='VERIFIED') list = ps.filter(p=>p.adminVerified);
+    else if(tab!=='ALL') list = ps.filter(p=>(p.approvalStatus||'APPROVED')===tab);
+    const badge = p => {
+      const st = p.approvalStatus||'APPROVED';
+      if(st==='PENDING') return '<span class="product-check-badge pending">⏳ Pending</span>';
+      if(st==='REJECTED') return '<span class="product-check-badge rejected">✕ Rejected</span>';
+      if(p.adminVerified) return '<span class="product-check-badge verified">✓ Verified</span>';
+      if(p.adminChecked) return '<span class="product-check-badge checked">✓ Checked</span>';
+      return '<span class="product-check-badge approved">✓ Approved</span>';
+    };
+    const rows = list.map(p=>{
+      const st=p.approvalStatus||'APPROVED';
+      const replyBtn = p.adminUnseenReply ? `<button class="btn danger" onclick="event.stopPropagation();adminViewProductReplies('${p.id}')">💬 New reply</button>` : ((p.sellerReplies||[]).length ? `<button class="btn" onclick="event.stopPropagation();adminViewProductReplies('${p.id}')">💬 Replies</button>` : '');
+      const approveReject = st==='PENDING' ? `<button class="btn primary" onclick="event.stopPropagation();adminProductCheckAction('${p.id}','approve')">Approve</button> <button class="btn danger" onclick="event.stopPropagation();adminProductCheckAction('${p.id}','reject')">Reject</button>` : '';
+      return `<tr class="data-row" onclick="adminNav('product/${p.id}')"><td><b>${esc(p.title)}</b><div class="small muted">${esc(p.id)}</div></td><td>@${esc(p.sellerId)}</td><td>${productSales(p.id)}</td><td>${money(p.price)}</td><td>${badge(p)}</td><td onclick="event.stopPropagation()">${approveReject} ${replyBtn} <button class="btn danger" onclick="adminDeleteProduct('${p.id}')">Delete</button></td></tr>`;
+    }).join('');
+    return adminLayout('products','Products',`<div class="admin-card"><div class="section-head"><div><h2>Product Management</h2><div class="sub">Open any product to inspect seller, sales, files and secure delivery URL.</div></div></div><div class="pc-tabs">${tabs.map(([id,label])=>`<button class="pc-tab ${tab===id?'active':''}" onclick="window.apTab='${id}';render()">${label}<span>${countFor(id)}</span></button>`).join('')}</div><table class="admin-table"><thead><tr><th>Product</th><th>Seller</th><th>Sales</th><th>Price</th><th>Status</th><th>Action</th></tr></thead><tbody>${rows||'<tr><td colspan="6"><div class="admin-empty">No products.</div></td></tr>'}</tbody></table></div>`);
+  };
+
+  /* ---------- 6) Seller dashboard: status badge + reply button on each live product ---------- */
+  const seOldPMCard = productManagerCard;
+  productManagerCard = function(p, type){
+    let html = seOldPMCard(p, type);
+    if(type === 'live'){
+      const st = p.approvalStatus || 'APPROVED';
+      let badgeHtml = st==='PENDING' ? '<span class="product-check-badge pending">⏳ Pending Review</span>'
+        : st==='REJECTED' ? '<span class="product-check-badge rejected">✕ Rejected</span>'
+        : p.adminVerified ? '<span class="product-check-badge verified">✓ Verified</span>'
+        : p.adminChecked ? '<span class="product-check-badge checked">✓ Checked</span>'
+        : '<span class="product-check-badge approved">✓ Approved</span>';
+      let extra = `<div class="pm-approval-status" style="margin-top:6px">${badgeHtml}`;
+      if(st==='REJECTED'){
+        extra += `<div class="small" style="color:#b42318;margin-top:4px"><b>Reason:</b> ${esc(p.approvalReason||'Not specified')}</div><button class="btn" style="margin-top:6px" onclick="sellerReplyToRejection('${esc(p.id)}')">↩ Reply to Admin</button>`;
+      }
+      extra += '</div>';
+      const tpl = document.createElement('template');
+      tpl.innerHTML = html;
+      tpl.content.querySelector('.pm-info')?.insertAdjacentHTML('beforeend', extra);
+      html = tpl.innerHTML;
+    }
+    return html;
+  };
+
+  /* ---------- 7) Seller dashboard sidebar: red badges for Products (rejected) and Warnings ---------- */
+  const seOldDashShell = dashShell;
+  dashShell = function(page, content){
+    let html = seOldDashShell(page, content);
+    const s = currentSeller ? currentSeller() : null;
+    if(!s) return html;
+    const rejectedCount = (S.products||[]).filter(p=>p.sellerId===s.id && (p.approvalStatus||'APPROVED')==='REJECTED').length;
+    const warnCount = (S.warnings||[]).filter(w=>w.sellerId===s.id).length;
+    if(rejectedCount>0){
+      html = html.replace(/(<button class="dash-link[^"]*" onclick="go\('dashboard\/products'\)">.*?)(<\/button>)/,
+        (m,a,b)=> a + `<span class="count">${rejectedCount}</span>` + b);
+    }
+    if(warnCount>0){
+      html = html.replace(/(<button class="dash-link[^"]*" onclick="go\('dashboard\/warnings'\)">.*?)(<\/button>)/,
+        (m,a,b)=> a + `<span class="count">${warnCount}</span>` + b);
+    }
+    return html;
+  };
+})();
+</script>
+
+<style data-se-status-badges="v1">
+.dash-link .count,.admin-link .count{margin-left:auto;min-width:20px;height:20px;border-radius:999px;display:inline-flex;align-items:center;justify-content:center;background:#ef5b68!important;color:#fff!important;font-size:10px;font-weight:900;padding:0 5px}
+.pm-approval-status .product-check-badge{margin-top:2px}
+</style>
+
+<script>
+/* ---------- 8) One-time reset: clear ads, subscriptions, messages & all payment/money
+   records while keeping products and users intact ---------- */
+(function(){
+  const FLAG = 'SE_RESET_ADS_SUB_MSG_PAYMENTS_V1';
+  try{
+    if(localStorage.getItem(FLAG)) return;
+    if(typeof S === 'undefined' || !S) return;
+    S.ads = [];
+    S.subscriptions = [];
+    S.messages = [];
+    if(Array.isArray(S.mailMessages)) S.mailMessages = [];
+    S.balancePayments = [];
+    S.payouts = [];
+    S.orders = [];
+    S.referralUpgrades = [];
+    S.adminFinancialLedger = [];
+    S.adminCommissionAdjustments = [];
+    if(Array.isArray(S.sellerFinanceLedger)) S.sellerFinanceLedger = [];
+    S.couponRedemptions = [];
+    S.disputes = [];
+    S.refunds = [];
+    S.serviceRefunds = [];
+    if(Array.isArray(S.gatewayPayments)) S.gatewayPayments = [];
+    if(S.badgeLedgers && typeof S.badgeLedgers === 'object'){
+      Object.values(S.badgeLedgers).forEach(l=>{ l.credits = 0; l.purchases = []; l.placedProductIds = []; });
+    }
+    if(typeof save === 'function') save();
+  }catch(e){ /* ignore */ }
+  try{ localStorage.setItem(FLAG,'1'); }catch(e){}
 })();
 </script>
 
