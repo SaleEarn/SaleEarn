@@ -3342,18 +3342,9 @@ function ensureStoreForUser(){
   store.name=store.name||((S.currentUser.name||"User")+"'s Store");
   store.followers=Number(store.followers||0);
   store.plan=store.plan||"FREE";
-  // Authorized Admin gets all seller-plan features for free.
-  if(typeof isAdmin==="function" && isAdmin()){
-    store.plan="ENTERPRISE";
-    store.adminFreeAccess=true;
-  }
   store.score=getSellerScore(sid);
   S.sellers[sid]=store;
   save();
- }
- if(typeof isAdmin==="function" && isAdmin()){
-   store.plan="ENTERPRISE";
-   store.adminFreeAccess=true;
  }
  return store;
 }
@@ -3628,17 +3619,6 @@ async function testPay(){
  }
 }
 function servicePaymentPanel(kind,amount,meta={}){
- if(typeof isAdmin==="function" && isAdmin()){
-   const freeX={kind,amount:0,meta:{...(meta||{}),originalAmount:Number(amount||0)}};
-   if(typeof applyServicePayment==="function"){
-     applyServicePayment({...freeX,paymentVerified:true}, "ADMIN_FREE");
-   }
-   window.pendingService=null;
-   save();
-   toast("Admin access: this feature is free");
-   render();
-   return;
- }
  const label=kind==="subscription"?"Subscription":kind==="ad"?"Ad / Boost":"Payment";
  window.pendingService={kind,amount:Number(amount||0),meta};
  const available=sellerAvailableBalance(currentSeller().id);
@@ -3724,7 +3704,7 @@ function applyServicePayment(x,source){
    if((S.balancePayments||[]).some(b=>b.gatewayPaymentId===x.gatewayPaymentId&&b.status==='SUCCESS'))return false;
    S.balancePayments.unshift({id:uid("bal"),sellerId:currentSeller().id,amount:x.amount,kind:x.kind,source,status:"SUCCESS",paymentVerified:true,gatewayPaymentId:x.gatewayPaymentId||null,date:nowISO(),meta:x.meta||{}});
  }
- if(x.kind==="subscription" && (source==="BALANCE"||source==="ONLINE_TEST"||source==="RAZORPAY_TEST"||source==="ADMIN_FREE")){
+ if(x.kind==="subscription" && (source==="BALANCE"||source==="ONLINE_TEST"||source==="RAZORPAY_TEST")){
    S.subscriptions=S.subscriptions||[];
    const subDate=nowISO(),subEnd=new Date(new Date(subDate).getTime()+SUBSCRIPTION_DURATION_MS).toISOString();
    if(x.gatewayPaymentId && S.subscriptions.some(z=>z.gatewayPaymentId===x.gatewayPaymentId))return false;
@@ -3737,7 +3717,7 @@ function applyServicePayment(x,source){
      const refKey=x.gatewayPaymentId||usedReferral.sellerId+':'+S.currentUser?.id+':'+subDate;
      if(!S.referrals.some(r=>r.paymentKey===refKey))S.referrals.unshift({id:uid("ref"),sellerId:usedReferral.sellerId,userId:S.currentUser.id,userName:S.currentUser.name,commission,status:"ACTIVE",date:subDate,paidAmount,rate:refRate,sourceSubscription:true,paymentKey:refKey});
    }
- }else if(x.kind==="ad" && (source==="BALANCE"||source==="ONLINE_TEST"||source==="RAZORPAY_TEST"||source==="ADMIN_FREE")){
+ }else if(x.kind==="ad" && (source==="BALANCE"||source==="ONLINE_TEST"||source==="RAZORPAY_TEST")){
    const sid=currentSeller().id,rate=x.meta.rate||0,days=x.meta.days||1,start=new Date(),end=new Date(start.getTime()+days*86400000);
    if(x.gatewayPaymentId && S.ads.some(a=>a.gatewayPaymentId===x.gatewayPaymentId))return false;
    S.ads.unshift({id:uid("ad"),sellerId:sid,productId:x.meta.productId,type:x.meta.type,placement:x.meta.type,cost:x.amount,clicks:0,status:"ACTIVE",startDate:start.toISOString(),endDate:end.toISOString(),paymentSource:source,paymentStatus:"SUCCESS",paymentVerified:true,gatewayPaymentId:x.gatewayPaymentId||null});
@@ -4263,10 +4243,7 @@ function productStateData(sid){
  const live=S.products.filter(p=>p.sellerId===sid), drafts=S.drafts.filter(d=>d.sellerId===sid), recycle=S.deletedProducts.filter(p=>p.sellerId===sid);
  return {live,drafts,recycle};
 }
-function draftLimitForSeller(s){
- if(typeof isAdmin==="function" && isAdmin())return 1000000;
- return ({FREE:10,CE:20,PRIME:20,ENTERPRISE:50}[s?.plan||'FREE']||10)
-}
+function draftLimitForSeller(s){return ({FREE:10,CE:20,PRIME:20,ENTERPRISE:50}[s?.plan||'FREE']||10)}
 function productManagerTab(){const r=route();return r==='dashboard/drafts'?'drafts':r==='dashboard/recycle'?'recycle':'live'}
 function productManagerCard(p,type){
  const dateVal=type==='recycle'?(p.deletedAt||p.recycledAt||p.createdAt):(p.createdAt||p.savedAt);
@@ -4360,7 +4337,7 @@ function dashPayouts(){
  <div class="dash-card"><h3>Request Payout</h3><p class="small muted">Available To Receive: <b>${money(available)}</b> · Minimum: ${money(minPayout)}${maxPayout?` · Maximum: ${money(maxPayout)}`:""}</p><div class="field"><label>Amount (${S.settings.currency})</label><input id="poAmt" type="number" min="${minPayout}" ${maxPayout?`max="${maxPayout}"`:""} placeholder="Minimum payout ${money(minPayout)}"></div><div class="field"><label>Payout UPI ID</label><input id="poUpi" value="${esc(currentSeller().upi||"")}" placeholder="yourname@upi"></div><div class="field"><label>Note to Admin (Optional)</label><input id="poNote" maxlength="50" placeholder="e.g. Urgent payout"></div><button class="btn primary" style="width:100%" onclick="requestPayout()">₹ Request Payout</button></div>
  <div class="dash-card" style="padding:0;overflow:hidden"><h3 style="padding:18px;margin:0">Payout Requests</h3><table class="dash-table"><thead><tr><th>Requested</th><th>Approved</th><th>Status</th><th>Date</th><th>Note</th></tr></thead><tbody>${(S.payouts||[]).filter(x=>x.sellerId===sid).map(x=>`<tr><td>${money(x.amount)}</td><td>${["APPROVED","PAID","SUCCESS","RECEIVED"].includes(payoutStatusUpper(x))?money(x.amount):"—"}</td><td><span class="status ${payoutStatusUpper(x)==="CANCELLED"?'cancelled':(['PENDING','PROCESSING','UNDER REVIEW','ON HOLD'].includes(payoutStatusUpper(x))?'pending':'success')}">${esc(x.status||'PENDING')}</span></td><td>${x.date?new Date(x.date).toLocaleString('en-IN'):'-'}</td><td>${esc(x.note||"")}</td></tr>`).join("")||`<tr><td colspan="5">No payout requests yet.</td></tr>`}</tbody></table></div>`)
 }
-function requestPayout(){
+async function requestPayout(){
  if(!systemGuard('withdrawals','Withdrawals are temporarily disabled by Admin'))return;
  const sid=currentSeller()?.id;if(!sid){toast('Seller dashboard access required');return}
  const amt=Number(document.getElementById("poAmt")?.value),upi=(document.getElementById("poUpi")?.value||"").trim(),note=(document.getElementById("poNote")?.value||"").trim();
@@ -4372,18 +4349,21 @@ function requestPayout(){
  const duplicate=(S.payouts||[]).find(x=>x.sellerId===sid&&payoutReservesBalance(x)&&Number(x.amount)===amt&&String(x.upi||'').toLowerCase()===upi.toLowerCase());
  if(duplicate){toast('Same payout request is already under review');return}
  currentSeller().upi=upi;
- const payout={id:uid('pay'),sellerId:sid,amount:amt,note,status:'PENDING',date:nowISO(),upi,paymentVerified:false};
- S.payouts.unshift(payout);save();toast('Payout request submitted');render();
- const tx=fakeGatewayCreate('payout',amt,{refId:payout.id,sellerId:sid,recipientUpi:upi,recipient:'SELLER_PAYOUT'});
- setTimeout(()=>{
-   if(!fakeGatewayMarkSuccess(tx.id)){const x=S.payouts.find(y=>y.id===payout.id);if(x){x.status='FAILED';x.failureReason='Gateway did not report transfer success';save();render()}toast('Payout transfer failed');return}
-   setTimeout(()=>{
-     const verified=fakeGatewayVerify(tx.id,{userId:sid,amount:amt,kind:'payout',recipient:'SELLER_PAYOUT',refId:payout.id,recipientUpi:upi});
-     if(!verified){const x=S.payouts.find(y=>y.id===payout.id);if(x){x.status='FAILED';x.failureReason='Recipient verification mismatch';save();render()}toast('Payout verification failed');return}
-     const x=S.payouts.find(y=>y.id===payout.id);if(!x||!payoutReservesBalance(x))return;
-     x.status='APPROVED';x.processedAt=nowISO();x.paymentVerified=true;x.gatewayPaymentId=tx.id;x.receivedAmount=amt;x.transferRecipientVerified=true;save();toast('Payout verified and marked Received');render();
-   },500)
- },700)
+ const payout={id:uid('pay'),sellerId:sid,amount:amt,note,status:'PROCESSING',date:nowISO(),upi,paymentVerified:false};
+ S.payouts.unshift(payout);save();toast('Sending payout to your UPI...');render();
+ try{
+   const result=await callGatewayFunction('cashfree-payout',{amount:amt,upi,payoutId:payout.id,remarks:note||'Sale Earn seller payout'});
+   const x=S.payouts.find(y=>y.id===payout.id);if(!x)return;
+   if(result?.verified){
+     x.status='APPROVED';x.processedAt=nowISO();x.paymentVerified=true;x.gatewayPaymentId=result.cf_transfer_id||result.transfer_id||'';x.utr=result.utr||'';x.receivedAmount=amt;x.transferRecipientVerified=true;save();toast('Payout sent to your UPI successfully!');render();
+   }else{
+     x.status='FAILED';x.failureReason=result?.error||'Payout could not be completed';save();toast('Payout failed: '+(result?.error||'please try again or contact support'));render();
+   }
+ }catch(e){
+   console.error('Payout error:',e);
+   const x=S.payouts.find(y=>y.id===payout.id);if(x){x.status='FAILED';x.failureReason='Network/server error';save()}
+   toast('Payout failed due to a server error. Please try again.');render();
+ }
 }
 function dashSubscription(){
  const s=currentSeller(),history=(S.subscriptions||[]).filter(x=>x.sellerId===s.id);
@@ -4393,14 +4373,6 @@ function dashSubscription(){
  <div class="dash-card" style="padding:0;overflow:hidden"><h3 style="padding:18px;margin:0">Subscription Pay History</h3><table class="dash-table"><thead><tr><th>Plan</th><th>Amount</th><th>Discount</th><th>Payment</th><th>Date</th><th>Status</th></tr></thead><tbody>${history.map(x=>{const end=subscriptionEndDate(x);const active=end&&Date.now()<end.getTime();return `<tr><td>${esc(x.plan)}</td><td>${money(x.amount)}</td><td>${money(x.discount||0)}</td><td>${esc(x.paymentSource||"ONLINE")}</td><td>${new Date(x.date).toLocaleString('en-IN')}</td><td><span class="status ${active?"success":"cancelled"}">${active?"ACTIVE":"EXPIRED"}</span></td></tr>`}).join("")||`<tr><td colspan="6" style="text-align:center;padding:30px">No subscription payment history yet.</td></tr>`}</tbody></table></div>`)
 }
 function buySubscription(plan){
- if(typeof isAdmin==="function" && isAdmin()){
-   const cp=(ensurePlatformConfig().plans||[]).find(x=>x.id===plan);
-   const target=(cp&&cp.active!==false&&!cp.archived)?String(plan).toUpperCase():"ENTERPRISE";
-   const s=currentSeller();
-   if(s){s.plan=target;s.adminFreeAccess=true;s.lastSubscription={plan:target,amount:0,date:nowISO(),discount:0,paymentSource:"ADMIN_FREE"};}
-   save(); render(); toast("Admin access: plan unlocked for free");
-   return;
- }
  if(!systemGuard("subscriptions","Subscriptions are temporarily disabled by Admin"))return;
  const cp=(ensurePlatformConfig().plans||[]).find(x=>x.id===plan);if(!cp||cp.active===false||cp.archived){toast("This subscription plan is unavailable");return}const price=Number(cp.monthly||0);
  if(plan==="FREE"){currentSeller().plan="FREE";save();render();return}
@@ -6405,21 +6377,6 @@ RAZORPAY TEST SETUP
   }
   // Keep the support inbox refresh alive only while the admin is viewing Mail Center.
   document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&typeof route==='function'&&String(route()||'')==='admin/mail'&&typeof loadContactMessagesForAdmin==='function')loadContactMessagesForAdmin();});
-})();
-</script>
-
-<script id="saleearn-admin-free-access">
-(function(){
-  function applyAdminFreeState(){
-    try{
-      if(typeof isAdmin!=="function" || !isAdmin()) return;
-      const s=typeof currentSeller==="function"?currentSeller():null;
-      if(s){s.plan="ENTERPRISE";s.adminFreeAccess=true;}
-      if(window.S && S.currentUser) S.currentUser.adminFreeAccess=true;
-    }catch(e){console.warn("Admin free access:",e)}
-  }
-  setTimeout(applyAdminFreeState,0);
-  setTimeout(applyAdminFreeState,500);
 })();
 </script>
 </body>
