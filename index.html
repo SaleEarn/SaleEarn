@@ -3342,9 +3342,18 @@ function ensureStoreForUser(){
   store.name=store.name||((S.currentUser.name||"User")+"'s Store");
   store.followers=Number(store.followers||0);
   store.plan=store.plan||"FREE";
+  // Authorized Admin gets all seller-plan features for free.
+  if(typeof isAdmin==="function" && isAdmin()){
+    store.plan="ENTERPRISE";
+    store.adminFreeAccess=true;
+  }
   store.score=getSellerScore(sid);
   S.sellers[sid]=store;
   save();
+ }
+ if(typeof isAdmin==="function" && isAdmin()){
+   store.plan="ENTERPRISE";
+   store.adminFreeAccess=true;
  }
  return store;
 }
@@ -3619,6 +3628,17 @@ async function testPay(){
  }
 }
 function servicePaymentPanel(kind,amount,meta={}){
+ if(typeof isAdmin==="function" && isAdmin()){
+   const freeX={kind,amount:0,meta:{...(meta||{}),originalAmount:Number(amount||0)}};
+   if(typeof applyServicePayment==="function"){
+     applyServicePayment({...freeX,paymentVerified:true}, "ADMIN_FREE");
+   }
+   window.pendingService=null;
+   save();
+   toast("Admin access: this feature is free");
+   render();
+   return;
+ }
  const label=kind==="subscription"?"Subscription":kind==="ad"?"Ad / Boost":"Payment";
  window.pendingService={kind,amount:Number(amount||0),meta};
  const available=sellerAvailableBalance(currentSeller().id);
@@ -3704,7 +3724,7 @@ function applyServicePayment(x,source){
    if((S.balancePayments||[]).some(b=>b.gatewayPaymentId===x.gatewayPaymentId&&b.status==='SUCCESS'))return false;
    S.balancePayments.unshift({id:uid("bal"),sellerId:currentSeller().id,amount:x.amount,kind:x.kind,source,status:"SUCCESS",paymentVerified:true,gatewayPaymentId:x.gatewayPaymentId||null,date:nowISO(),meta:x.meta||{}});
  }
- if(x.kind==="subscription" && (source==="BALANCE"||source==="ONLINE_TEST"||source==="RAZORPAY_TEST")){
+ if(x.kind==="subscription" && (source==="BALANCE"||source==="ONLINE_TEST"||source==="RAZORPAY_TEST"||source==="ADMIN_FREE")){
    S.subscriptions=S.subscriptions||[];
    const subDate=nowISO(),subEnd=new Date(new Date(subDate).getTime()+SUBSCRIPTION_DURATION_MS).toISOString();
    if(x.gatewayPaymentId && S.subscriptions.some(z=>z.gatewayPaymentId===x.gatewayPaymentId))return false;
@@ -3717,7 +3737,7 @@ function applyServicePayment(x,source){
      const refKey=x.gatewayPaymentId||usedReferral.sellerId+':'+S.currentUser?.id+':'+subDate;
      if(!S.referrals.some(r=>r.paymentKey===refKey))S.referrals.unshift({id:uid("ref"),sellerId:usedReferral.sellerId,userId:S.currentUser.id,userName:S.currentUser.name,commission,status:"ACTIVE",date:subDate,paidAmount,rate:refRate,sourceSubscription:true,paymentKey:refKey});
    }
- }else if(x.kind==="ad" && (source==="BALANCE"||source==="ONLINE_TEST"||source==="RAZORPAY_TEST")){
+ }else if(x.kind==="ad" && (source==="BALANCE"||source==="ONLINE_TEST"||source==="RAZORPAY_TEST"||source==="ADMIN_FREE")){
    const sid=currentSeller().id,rate=x.meta.rate||0,days=x.meta.days||1,start=new Date(),end=new Date(start.getTime()+days*86400000);
    if(x.gatewayPaymentId && S.ads.some(a=>a.gatewayPaymentId===x.gatewayPaymentId))return false;
    S.ads.unshift({id:uid("ad"),sellerId:sid,productId:x.meta.productId,type:x.meta.type,placement:x.meta.type,cost:x.amount,clicks:0,status:"ACTIVE",startDate:start.toISOString(),endDate:end.toISOString(),paymentSource:source,paymentStatus:"SUCCESS",paymentVerified:true,gatewayPaymentId:x.gatewayPaymentId||null});
@@ -4243,7 +4263,10 @@ function productStateData(sid){
  const live=S.products.filter(p=>p.sellerId===sid), drafts=S.drafts.filter(d=>d.sellerId===sid), recycle=S.deletedProducts.filter(p=>p.sellerId===sid);
  return {live,drafts,recycle};
 }
-function draftLimitForSeller(s){return ({FREE:10,CE:20,PRIME:20,ENTERPRISE:50}[s?.plan||'FREE']||10)}
+function draftLimitForSeller(s){
+ if(typeof isAdmin==="function" && isAdmin())return 1000000;
+ return ({FREE:10,CE:20,PRIME:20,ENTERPRISE:50}[s?.plan||'FREE']||10)
+}
 function productManagerTab(){const r=route();return r==='dashboard/drafts'?'drafts':r==='dashboard/recycle'?'recycle':'live'}
 function productManagerCard(p,type){
  const dateVal=type==='recycle'?(p.deletedAt||p.recycledAt||p.createdAt):(p.createdAt||p.savedAt);
@@ -4370,6 +4393,14 @@ function dashSubscription(){
  <div class="dash-card" style="padding:0;overflow:hidden"><h3 style="padding:18px;margin:0">Subscription Pay History</h3><table class="dash-table"><thead><tr><th>Plan</th><th>Amount</th><th>Discount</th><th>Payment</th><th>Date</th><th>Status</th></tr></thead><tbody>${history.map(x=>{const end=subscriptionEndDate(x);const active=end&&Date.now()<end.getTime();return `<tr><td>${esc(x.plan)}</td><td>${money(x.amount)}</td><td>${money(x.discount||0)}</td><td>${esc(x.paymentSource||"ONLINE")}</td><td>${new Date(x.date).toLocaleString('en-IN')}</td><td><span class="status ${active?"success":"cancelled"}">${active?"ACTIVE":"EXPIRED"}</span></td></tr>`}).join("")||`<tr><td colspan="6" style="text-align:center;padding:30px">No subscription payment history yet.</td></tr>`}</tbody></table></div>`)
 }
 function buySubscription(plan){
+ if(typeof isAdmin==="function" && isAdmin()){
+   const cp=(ensurePlatformConfig().plans||[]).find(x=>x.id===plan);
+   const target=(cp&&cp.active!==false&&!cp.archived)?String(plan).toUpperCase():"ENTERPRISE";
+   const s=currentSeller();
+   if(s){s.plan=target;s.adminFreeAccess=true;s.lastSubscription={plan:target,amount:0,date:nowISO(),discount:0,paymentSource:"ADMIN_FREE"};}
+   save(); render(); toast("Admin access: plan unlocked for free");
+   return;
+ }
  if(!systemGuard("subscriptions","Subscriptions are temporarily disabled by Admin"))return;
  const cp=(ensurePlatformConfig().plans||[]).find(x=>x.id===plan);if(!cp||cp.active===false||cp.archived){toast("This subscription plan is unavailable");return}const price=Number(cp.monthly||0);
  if(plan==="FREE"){currentSeller().plan="FREE";save();render();return}
@@ -6374,6 +6405,21 @@ RAZORPAY TEST SETUP
   }
   // Keep the support inbox refresh alive only while the admin is viewing Mail Center.
   document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&typeof route==='function'&&String(route()||'')==='admin/mail'&&typeof loadContactMessagesForAdmin==='function')loadContactMessagesForAdmin();});
+})();
+</script>
+
+<script id="saleearn-admin-free-access">
+(function(){
+  function applyAdminFreeState(){
+    try{
+      if(typeof isAdmin!=="function" || !isAdmin()) return;
+      const s=typeof currentSeller==="function"?currentSeller():null;
+      if(s){s.plan="ENTERPRISE";s.adminFreeAccess=true;}
+      if(window.S && S.currentUser) S.currentUser.adminFreeAccess=true;
+    }catch(e){console.warn("Admin free access:",e)}
+  }
+  setTimeout(applyAdminFreeState,0);
+  setTimeout(applyAdminFreeState,500);
 })();
 </script>
 </body>
