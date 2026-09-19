@@ -4094,9 +4094,78 @@ function adminReviews(){const rows=[];Object.entries(S.reviews||{}).forEach(([pi
 function adminEditReview(pid,rid){if(!adminOnly())return;const r=(S.reviews?.[pid]||[]).find(x=>x.id===rid);if(!r){toast('Review not found');return}const text=prompt('Edit review:',r.text||'');if(text===null)return;const clean=String(text).trim();if(!clean){toast('Review cannot be empty');return}r.text=clean;r.editedAt=nowISO();r.editedBy=S.currentUser?.id||'ADMIN';logAdminAudit('Edited review',rid,{productId:pid});save();toast('Review updated');render()}
 function adminSales(){const st=adminStats();const bySeller={};st.orders.forEach(x=>{bySeller[x.sellerId]=bySeller[x.sellerId]||{sales:0,orders:0,net:0};bySeller[x.sellerId].sales+=Number(x.amount||0);bySeller[x.sellerId].net+=Number(x.netSellerAmount||0);bySeller[x.sellerId].orders++});const today=new Date().toDateString();const td=st.orders.filter(x=>new Date(x.date).toDateString()===today);return adminLayout('sales','Sales & Earnings',`<div class="admin-kpis"><div class="admin-kpi"><span>Total Sales</span><b>${money(st.sales)}</b></div><div class="admin-kpi"><span>Net Seller Earnings</span><b>${money(st.earnings)}</b></div><div class="admin-kpi"><span>Today's Sales</span><b>${money(td.reduce((a,x)=>a+Number(x.amount||0),0))}</b></div><div class="admin-kpi"><span>Today's Orders</span><b>${td.length}</b></div></div><div class="admin-card"><h2>Seller-wise Sales</h2><div class="sub">See which seller sold which products and how much was earned.</div><table class="admin-table"><thead><tr><th>Seller</th><th>Orders</th><th>Gross Sales</th><th>Net Seller Earnings</th><th>Products Sold</th></tr></thead><tbody>${Object.entries(bySeller).map(([sid,v])=>`<tr class="data-row" onclick="adminNav('seller/${sid}')"><td>@${esc(sid)}<div class="small muted">${esc(seller(sid).name)}</div></td><td>${v.orders}</td><td>${money(v.sales)}</td><td>${money(v.net)}</td><td>${S.products.filter(p=>p.sellerId===sid).map(p=>`${esc(p.title)} (${productSales(p.id)})`).join('<br>')||'Deleted product(s) may be in recycle bin'}</td></tr>`).join('')||`<tr><td colspan="5"><div class="admin-empty">No successful sales.</div></td></tr>`}</tbody></table></div>`)}
 function adminSellerDetail(id){const ss=seller(id),ps=S.products.filter(p=>p.sellerId===id),os=S.orders.filter(o=>o.sellerId===id&&o.status==='SUCCESS');return adminLayout('sales','Seller Sales',`<button class="btn admin-back" onclick="adminNav('sales')">← Back to Sales</button><div class="admin-detail"><div class="admin-detail-box"><h2>${esc(ss.name)}</h2><p>Seller ID: @${esc(id)}</p><p>Owner: ${esc(ss.owner||'-')}</p><p>Plan: ${esc(ss.plan||'FREE')}</p>${sellerScoreMarkup(id,true)}<div class="field"><label>Set Seller Score (0–100)</label><div class="score-admin-row"><input id="adminSellerScore" type="number" min="0" max="100" value="${getSellerScore(id)}"><input id="adminSellerScoreReason" placeholder="Reason for manual update"><button class="btn primary" onclick="adminSetSellerScore('${id}',document.getElementById('adminSellerScore').value)">Save Score</button></div></div></div><div class="admin-detail-box"><div class="admin-stat-row"><div class="admin-stat"><b>${os.length}</b><span class="small muted">Successful sales</span></div><div class="admin-stat"><b>${money(os.reduce((a,x)=>a+Number(x.amount||0),0))}</b><span class="small muted">Gross</span></div><div class="admin-stat"><b>${money(os.reduce((a,x)=>a+Number(x.netSellerAmount||0),0))}</b><span class="small muted">Net</span></div></div></div></div><div class="admin-card"><h2>Products Sold</h2>${ps.map(p=>`<div class="security-row"><div><b>${esc(p.title)}</b><div class="small muted">${esc(p.id)} · ${productSales(p.id)} sales</div></div><span>${money(os.filter(o=>o.productId===p.id).reduce((a,x)=>a+Number(x.amount||0),0))}</span></div>`).join('')||'<div class="admin-empty">No live products.</div>'}</div>`)}
-function adminPayouts(){return adminLayout('payouts','Withdrawals',`<div class="admin-card"><h2>Seller Payout Requests</h2><div class="sub">Manual payout mode: Admin pays the seller outside the website, then marks the request Paid or Cancelled.</div><table class="admin-table"><thead><tr><th>Seller</th><th>User ID</th><th>Amount</th><th>UPI</th><th>Status</th><th>Requested At</th><th>Action</th></tr></thead><tbody>${(S.payouts||[]).map(x=>{const st=String(x.status||'PENDING').toUpperCase();const cls=st==='CANCELLED'?'danger':st==='PENDING'?'warn':'success';const u=S.users?.find(u=>u.id===x.userId||u.authId===x.userId||u.sellerId===x.sellerId);const uidv=x.userId||u?.userId||u?.id||'-';return `<tr><td>@${esc(x.sellerId||'-')}</td><td>${esc(uidv)}</td><td>${money(x.amount)}</td><td>${esc(x.upi||seller(x.sellerId).upi||'-')}</td><td><span class="admin-pill ${cls}">${esc(st)}</span></td><td>${x.date?new Date(x.date).toLocaleString('en-IN'):'-'}</td><td>${st==='PENDING'?`<button class="btn primary" onclick="adminMarkPayoutPaid('${esc(x.id||'')}')">Paid</button> <button class="btn danger" onclick="adminCancelPayout('${esc(x.id||'')}')">Cancel</button>`:st==='PAID'?'Paid':'—'}</td></tr>`}).join('')||`<tr><td colspan="7"><div class="admin-empty">No payout requests.</div></td></tr>`}</tbody></table></div>`)}
-function adminMarkPayoutPaid(id){if(!adminOnly())return;const p=(S.payouts||[]).find(x=>String(x.id)===String(id));if(!p){toast('Payout not found');return}const st=String(p.status||'PENDING').toUpperCase();if(st!=='PENDING'){toast('Only pending payouts can be marked Paid');return}p.status='PAID';p.processedAt=nowISO();p.paidAt=p.processedAt;p.paidBy=S.currentUser?.id||'ADMIN';p.paymentVerified=true;p.manualPayout=true;p.receivedAmount=Number(p.amount||0);logAdminAudit('Marked payout Paid',id,{sellerId:p.sellerId,userId:p.userId,amount:p.amount,upi:p.upi||''});save();toast('Payout marked Paid');render()}
-function adminCancelPayout(id){if(!adminOnly())return;const p=(S.payouts||[]).find(x=>String(x.id)===String(id));if(!p){toast('Payout not found');return}const st=String(p.status||'PENDING').toUpperCase();if(st!=='PENDING'){toast('Only pending payouts can be cancelled');return}p.status='CANCELLED';p.cancelledAt=nowISO();p.cancelledBy=S.currentUser?.id||'ADMIN';p.paymentVerified=false;p.returnedToBalance=true;p.returnedAmount=Number(p.amount||0);logAdminAudit('Cancelled payout',id,{sellerId:p.sellerId,userId:p.userId,amount:p.amount,upi:p.upi||''});save();toast('Payout cancelled; amount returned to To Receive');render()}
+function adminPayouts(){
+ const pending=(S.payouts||[]).filter(x=>String(x.status||'PENDING').toUpperCase()==='PENDING').length;
+ return adminLayout('payouts','Withdrawals',`
+ <div class="admin-card">
+  <div class="section-head">
+   <div><h2>Seller Payout Requests</h2><div class="sub">New requests stay PENDING until admin manually pays the seller or cancels the request.</div></div>
+   ${pending?`<span class="admin-pill warn">${pending} NEW</span>`:''}
+  </div>
+  <table class="admin-table">
+   <thead><tr><th>User ID</th><th>Amount</th><th>UPI ID</th><th>Status</th><th>Date / Time</th><th>Action</th></tr></thead>
+   <tbody>
+    ${(S.payouts||[]).map(x=>{
+      const st=String(x.status||'PENDING').toUpperCase();
+      const cls=st==='CANCELLED'?'danger':st==='PENDING'?'warn':'success';
+      const sellerName=seller(x.sellerId)?.name||'Seller';
+      return `<tr>
+       <td><b>@${esc(x.sellerId||'')}</b><div class="small muted">${esc(sellerName)}</div></td>
+       <td>${money(x.amount)}</td>
+       <td>${esc(x.upi||seller(x.sellerId).upi||'-')}</td>
+       <td><span class="admin-pill ${cls}">${esc(st)}</span></td>
+       <td>${x.date?new Date(x.date).toLocaleString('en-IN'):'-'}</td>
+       <td>${st==='PENDING'?`<div style="display:flex;gap:6px;flex-wrap:wrap">
+         <button class="btn primary" onclick="adminMarkPayoutPaid('${esc(x.id||'')}')">PAID</button>
+         <button class="btn danger" onclick="adminCancelPayout('${esc(x.id||'')}')">CANCEL</button>
+       </div>`:(st==='PAID'?`<span class="small muted">${x.processedAt?new Date(x.processedAt).toLocaleString('en-IN'):''}</span>`:'—')}</td>
+      </tr>`;
+    }).join('')||`<tr><td colspan="6"><div class="admin-empty">No payout requests.</div></td></tr>`}
+   </tbody>
+  </table>
+ </div>`)
+}
+function adminMarkPayoutPaid(id){
+ if(!adminOnly())return;
+ const p=(S.payouts||[]).find(x=>String(x.id)===String(id));
+ if(!p){toast('Payout not found');return}
+ if(String(p.status||'').toUpperCase()!=='PENDING'){toast('Only pending payouts can be marked PAID');return}
+ const s=seller(p.sellerId);
+ if(!s){toast('Seller not found');return}
+ const amt=Number(p.amount||0);
+ const available=Number(sellerAvailableBalance(p.sellerId)||0);
+ if(amt<=0||amt>available){toast('Seller balance is not sufficient for this payout');return}
+ p.status='PAID';
+ p.processedAt=nowISO();
+ p.paidAt=p.processedAt;
+ p.paidBy=S.currentUser?.id||'ADMIN';
+ p.paymentVerified=true;
+ p.manualPayout=true;
+ p.adminAction='PAID';
+ p.paidAmount=amt;
+ logAdminAudit('Marked seller payout PAID',id,{sellerId:p.sellerId,amount:amt,upi:p.upi});
+ save();
+ toast('Payout marked PAID');
+ render();
+}
+function adminCancelPayout(id){
+ if(!adminOnly())return;
+ const p=(S.payouts||[]).find(x=>String(x.id)===String(id));
+ if(!p){toast('Payout not found');return}
+ if(String(p.status||'').toUpperCase()!=='PENDING'){toast('Only pending payouts can be cancelled');return}
+ p.status='CANCELLED';
+ p.cancelledAt=nowISO();
+ p.cancelledBy=S.currentUser?.id||'ADMIN';
+ p.paymentVerified=false;
+ p.manualPayout=false;
+ p.adminAction='CANCEL';
+ p.returnedToBalance=true;
+ p.returnedAmount=Number(p.amount||0);
+ logAdminAudit('Cancelled seller payout',id,{sellerId:p.sellerId,amount:p.amount,upi:p.upi});
+ save();
+ toast('Payout cancelled; amount returned to To Receive');
+ render();
+}
 function adminWarnings(){const live=S.products||[];return adminLayout('warnings','Warnings',`<div class="admin-card"><div class="section-head"><div><h2>Warning Center</h2><div class="sub">Warn a seller/user and optionally tag the exact live product that needs fixing.</div></div></div><div class="form-grid"><div class="field"><label>Seller/User ID</label><input id="admSid" placeholder="seller id or user id"></div><div class="field"><label>Live Product (optional)</label><select id="admWarnProduct"><option value="">— No product tag —</option>${live.filter(p=>!p.hiddenByAdmin).map(p=>`<option value="${esc(p.id)}">${esc(p.title)} · ${esc(p.id)} · @${esc(p.sellerId)}</option>`).join('')}</select></div><div class="field"><label>Product ID (optional)</label><input id="admWarnProductId" placeholder="Paste exact product ID"></div><div class="field"><label>Title</label><input id="admWarnTitle" value="Product Fix Required"></div></div><div class="field"><label>Message</label><textarea id="admWarnMsg" placeholder="Explain what the seller needs to fix..."></textarea></div><button class="btn primary" onclick="adminWarning()">Send Warning</button><div style="margin-top:18px">${(S.warnings||[]).map(w=>`<div class="security-row"><div><b>${esc(w.title||'Admin Warning')}</b><div class="small muted">@${esc(w.sellerId||w.userId||'-')} · ${w.productId?`Product: ${esc(w.productId)} · `:''}${w.date?new Date(w.date).toLocaleString('en-IN'):'-'}</div><div>${esc(w.message||'')}</div></div><button class="btn danger" onclick="adminRemoveWarning('${esc(w.id||'')}')">Remove</button></div>`).join('')||'<div class="admin-empty">No warnings.</div>'}</div></div>`)}
 function adminRemoveWarning(id){if(!adminOnly())return;const i=(S.warnings||[]).findIndex(w=>String(w.id)===String(id));if(i<0){toast('Warning not found');return}const w=S.warnings[i];S.warnings.splice(i,1);logAdminAudit('Removed warning',id,{sellerId:w.sellerId,userId:w.userId||null});save();toast('Warning removed');render()}
 function adminWarning(){if(!adminOnly())return;const raw=document.getElementById("admSid")?.value.trim(),msg=document.getElementById("admWarnMsg")?.value.trim(),title=document.getElementById("admWarnTitle")?.value.trim()||"Admin Warning";const selectedProduct=(document.getElementById("admWarnProduct")?.value||"").trim(),typedProduct=(document.getElementById("admWarnProductId")?.value||"").trim(),productId=typedProduct||selectedProduct;if(!raw||!msg){toast("Enter a user/seller ID and message");return}let sid=raw;let targetUserId=null;if(!S.sellers[sid]){const u=(S.users||[]).find(x=>String(x.id)===String(raw));if(u?.sellerId&&S.sellers[u.sellerId]){sid=u.sellerId;targetUserId=u.id}else{toast("User/Seller ID not found");return}}let taggedProduct=null;if(productId){taggedProduct=product(productId);if(!taggedProduct){toast("Product ID not found in live products");return}if(String(taggedProduct.sellerId)!==String(sid)){toast("Tagged product does not belong to this seller/user");return}}S.warnings=S.warnings||[];const warning={id:uid("warn"),sellerId:sid,userId:targetUserId,productId:taggedProduct?.id||null,productTitle:taggedProduct?.title||null,title,message:msg,date:nowISO(),read:false};S.warnings.unshift(warning);adjustSellerScore(sid,-10,'Admin warning','WARNING:'+warning.id,'ADMIN');logAdminAudit('Sent seller warning',sid,{title,targetUserId,productId:taggedProduct?.id||null});save();toast(taggedProduct?`Warning sent and tagged to ${taggedProduct.id}`:"Warning sent");render()}
@@ -4339,21 +4408,36 @@ function dashPayouts(){
  <div class="dash-card" style="padding:0;overflow:hidden"><h3 style="padding:18px;margin:0">Payout Requests</h3><table class="dash-table"><thead><tr><th>Requested</th><th>Approved</th><th>Status</th><th>Date</th><th>Note</th></tr></thead><tbody>${(S.payouts||[]).filter(x=>x.sellerId===sid).map(x=>`<tr><td>${money(x.amount)}</td><td>${["APPROVED","PAID","SUCCESS","RECEIVED"].includes(payoutStatusUpper(x))?money(x.amount):"—"}</td><td><span class="status ${payoutStatusUpper(x)==="CANCELLED"?'cancelled':(['PENDING','PROCESSING','UNDER REVIEW','ON HOLD'].includes(payoutStatusUpper(x))?'pending':'success')}">${esc(x.status||'PENDING')}</span></td><td>${x.date?new Date(x.date).toLocaleString('en-IN'):'-'}</td><td>${esc(x.note||"")}</td></tr>`).join("")||`<tr><td colspan="5">No payout requests yet.</td></tr>`}</tbody></table></div>`)
 }
 async function requestPayout(){
- if(!systemGuard('withdrawals','Withdrawals are temporarily disabled by Admin'))return;
- const sid=currentSeller()?.id;if(!sid){toast('Seller dashboard access required');return}
- const amt=Number(document.getElementById("poAmt")?.value),upi=(document.getElementById("poUpi")?.value||"").trim(),note=(document.getElementById("poNote")?.value||"").trim();
- const minPayout=Math.max(30,Number(advState().payoutMin||30)),maxPayout=Number(advState().payoutMax||0),available=sellerAvailableBalance(sid);
- if(!Number.isFinite(amt)||amt<minPayout){toast(`Minimum payout is ${money(minPayout)}`);return}
- if(maxPayout>0&&amt>maxPayout){toast(`Maximum payout is ${money(maxPayout)}`);return}
- if(amt>available){toast('Amount exceeds Available To Receive');return}
- if(!/^[^\s@]+@[^\s@]+$/.test(upi)){toast('Enter a valid payout UPI ID');return}
- const duplicate=(S.payouts||[]).find(x=>x.sellerId===sid&&payoutReservesBalance(x)&&Number(x.amount)===amt&&String(x.upi||'').toLowerCase()===upi.toLowerCase());
+ const s=currentSeller();
+ if(!s||!s.id){toast('Please sign in as a seller');return}
+ if(advState().withdrawals){toast('Withdrawals are temporarily disabled by admin');return}
+ const amt=Number($('payoutAmount')?.value||0);
+ const upi=String($('payoutUpi')?.value||s.upi||'').trim();
+ const note=String($('payoutNote')?.value||'').trim();
+ const available=Number(sellerAvailableBalance(s.id)||0);
+ if(!Number.isFinite(amt)||amt<=0){toast('Enter a valid payout amount');return}
+ if(!upi){toast('Enter your UPI ID');return}
+ if(amt>available){toast('Requested amount is higher than your To Receive balance');return}
+ const duplicate=(S.payouts||[]).some(x=>String(x.sellerId)===String(s.id)&&['PENDING','PROCESSING'].includes(String(x.status||'').toUpperCase())&&Number(x.amount)===amt&&String(x.upi||'').toLowerCase()===upi.toLowerCase());
  if(duplicate){toast('Same payout request is already under review');return}
- currentSeller().upi=upi;
- const payout={id:uid('pay'),sellerId:sid,userId:S.currentUser?.userId||S.currentUser?.authId||S.currentUser?.id||null,amount:amt,note,status:'PENDING',date:nowISO(),upi,paymentVerified:false,manualPayout:true};
- S.payouts.unshift(payout);save();toast('Payout request submitted. Waiting for Admin payment.');render();
+ s.upi=upi;
+ const payout={
+   id:uid('pay'),
+   sellerId:s.id,
+   amount:amt,
+   note,
+   status:'PENDING',
+   date:nowISO(),
+   upi,
+   paymentVerified:false,
+   adminAction:null,
+   processedAt:null
+ };
+ S.payouts.unshift(payout);
+ save();
+ toast('Payout request sent to admin for review');
+ render();
 }
-
 function dashSubscription(){
  const s=currentSeller(),history=(S.subscriptions||[]).filter(x=>x.sellerId===s.id);
  const cfgPlans=(ensurePlatformConfig().plans||[]).slice(0,3);const plans=cfgPlans.filter(p=>p.active!==false&&!p.archived).map(p=>[p.id,p.name,p.monthly,Number(p.commissionPct||0)/100,(Array.isArray(p.featureText)&&p.featureText.length?p.featureText:[`Upload limit: ${p.uploadLimit}`,`Storage limit: ${p.storageLimit} MB`,p.prioritySupport?"Priority support":"Standard support"])])
@@ -5388,7 +5472,7 @@ function mailPanel(){
 window.mailPanel=mailPanel;
 window.studioMenu=function(){mobileOpen=!mobileOpen;document.body.classList.toggle('as-menu-open',mobileOpen);};
 const groups=[['WORKSPACE',[['','grid','Overview'],['control','sliders','Website controls'],['products','box','Products'],['users','users','Users & sellers'],['orders','orders','Orders']]],['BUSINESS',[['sales','chart','Sales & earnings'],['payouts','wallet','Withdrawals'],['commission','tag','Commissions'],['coupons','tag','Coupons'],['analytics','chart','Analytics'],['money','wallet','Money overview']]],['TRUST & GROWTH',[['reviews','star','Reviews'],['smartreviews','star','Review insights'],['warnings','bell','Warnings'],['risk','shield','Risk center'],['ranking','chart','Seller rankings'],['growth','bolt','Seller growth']]],['SYSTEM',[['mail','mail','Mail Center'],['audit','clock','Activity log'],['security','shield','Security'],['emergency','bolt','Emergency controls'],['deleted','trash','Recycle bin'],['system','sliders','System health']]]];
-window.adminSidebar=function(active){return `<aside class="admin-side"><a class="as-logo" href="#home" title="Open Sale Earn Home"><span class="logo-mark">SE</span><span>${esc(siteName())}<small>ADMIN STUDIO</small></span></a><nav class="as-nav" aria-label="Admin navigation">${groups.map(([g,items])=>`<div class="admin-nav-title">${g}</div>${items.map(([id,ic,label])=>`<button class="admin-link ${active===id?'active':''}" onclick="adminNav('${id}')" ${active===id?'aria-current="page"':''}>${icon(ic)}<span class="label">${label}</span>${id==='payouts'&&(S.payouts||[]).some(x=>x.status==='PENDING')?`<span class="as-count">${S.payouts.filter(x=>x.status==='PENDING').length}</span>`:id==='mail'&&mailStore().some(x=>x.type!=='sent'&&!x.read)?`<span class="as-count">${mailStore().filter(x=>x.type!=='sent'&&!x.read).length}</span>`:''}</button>`).join('')}`).join('')}</nav><div class="as-side-footer"><button class="admin-link" onclick="go('home')">${icon('globe')}<span class="label">Visit marketplace</span>${icon('arrow')}</button><div class="as-account"><span class="as-avatar">${esc(initials(S.currentUser?.name))}</span><div style="flex:1"><strong>${esc(S.currentUser?.name||'Administrator')}</strong><small>Administrator · TEST</small></div><button class="btn" aria-label="Sign out" onclick="signout()">${icon('exit')}</button></div></div></aside>`;};
+window.adminSidebar=function(active){return `<aside class="admin-side"><a class="as-logo" href="#home" title="Open Sale Earn Home"><span class="logo-mark">SE</span><span>${esc(siteName())}<small>ADMIN STUDIO</small></span></a><nav class="as-nav" aria-label="Admin navigation">${groups.map(([g,items])=>`<div class="admin-nav-title">${g}</div>${items.map(([id,ic,label])=>`<button class="admin-link ${active===id?'active':''}" onclick="adminNav('${id}')" ${active===id?'aria-current="page"':''}>${icon(ic)}<span class="label">${label}</span>${id==='payouts'&&(S.payouts||[]).some(x=>String(x.status||'PENDING').toUpperCase()==='PENDING')?`<span class="as-count payout-new-badge">${S.payouts.filter(x=>String(x.status||'PENDING').toUpperCase()==='PENDING').length}</span>`:id==='mail'&&mailStore().some(x=>x.type!=='sent'&&!x.read)?`<span class="as-count">${mailStore().filter(x=>x.type!=='sent'&&!x.read).length}</span>`:''}</button>`).join('')}`).join('')}</nav><div class="as-side-footer"><button class="admin-link" onclick="go('home')">${icon('globe')}<span class="label">Visit marketplace</span>${icon('arrow')}</button><div class="as-account"><span class="as-avatar">${esc(initials(S.currentUser?.name))}</span><div style="flex:1"><strong>${esc(S.currentUser?.name||'Administrator')}</strong><small>Administrator · TEST</small></div><button class="btn" aria-label="Sign out" onclick="signout()">${icon('exit')}</button></div></div></aside>`;};
 window.adminTop=function(title){return `<div class="admin-top"><button class="btn as-menu" aria-label="Toggle admin navigation" onclick="studioMenu()">${icon('menu')}</button><div class="as-breadcrumb"><span>Workspace</span><span>/</span><b>${esc(title)}</b></div><div class="admin-search-wrap"><input id="adminGlobalSearch" class="admin-search" aria-label="Search users, products and orders" placeholder="Search anything…" oninput="adminSearchLive(this.value)" onkeydown="if(event.key==='Enter')adminSearch(this.value)" autocomplete="off"><div id="adminSearchResults" class="admin-search-results hidden"></div></div><div class="as-top-actions"><div class="as-sync" data-state="${syncState}" role="status"><i class="as-dot"></i><span>${esc(syncText)}</span></div><button class="btn" onclick="studioPublishNow()" title="Sync saved changes now" aria-label="Sync saved changes now">${icon('refresh')}</button><button class="btn" onclick="go('home')">${icon('globe')}<span class="as-preview-label">View website</span></button><span class="as-avatar">${esc(initials(S.currentUser?.name))}</span></div></div>`;};
 window.adminLayout=function(active,title,content){if(!adminOnly())return `${header()}<main class="page"></main>`;return `<div class="admin-shell">${adminSidebar(active)}<div class="as-mobile-shade" onclick="studioMenu()"></div><section class="admin-main">${adminTop(title)}<div class="admin-content">${content}</div></section></div>`;};
 const titleBlock=(label,title,desc)=>`<div class="as-page-title"><div><div class="as-eyebrow">${esc(label)}</div><h1>${esc(title)}</h1><p>${esc(desc)}</p></div><div class="as-date">${new Date().toLocaleDateString('en-IN',{weekday:'short',day:'numeric',month:'long',year:'numeric'})}</div></div>`;
