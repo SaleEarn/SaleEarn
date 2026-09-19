@@ -2002,6 +2002,32 @@ button:hover,.btn:hover,.pill:hover,.view-toggle button:hover,.policy-side-link:
 }
 </style>
 
+
+<style id="se-stable-scroll-panels">
+/* Long lists scroll inside their own panel so page height stays stable. */
+.se-scroll-panel{
+  max-height:560px;
+  overflow:auto;
+  overscroll-behavior:contain;
+  scrollbar-width:thin;
+  scrollbar-gutter:stable;
+  border:1px solid var(--line);
+  border-radius:14px;
+}
+.se-scroll-panel::-webkit-scrollbar{width:7px;height:7px}
+.se-scroll-panel::-webkit-scrollbar-track{background:transparent}
+.se-scroll-panel::-webkit-scrollbar-thumb{background:#394863;border-radius:99px}
+.se-scroll-panel::-webkit-scrollbar-thumb:hover{background:#566785}
+.se-scroll-panel .admin-table,.se-scroll-panel .dash-table{min-width:760px}
+.se-scroll-panel thead th{position:sticky;top:0;z-index:2}
+.se-scroll-panel .admin-table thead th{background:#111a2c}
+.se-scroll-panel .dash-table thead th{background:var(--surface2)}
+.se-scroll-panel .data-row{cursor:pointer}
+.se-admin-detail-list{max-height:360px;overflow:auto;overscroll-behavior:contain;scrollbar-width:thin}
+.se-admin-detail-list::-webkit-scrollbar{width:6px}
+.se-admin-detail-list::-webkit-scrollbar-thumb{background:#394863;border-radius:99px}
+@media(max-width:760px){.se-scroll-panel{max-height:500px}.se-scroll-panel .admin-table,.se-scroll-panel .dash-table{min-width:700px}}
+</style>
 </head>
 <body>
 <div id="siteLoader" class="site-loader" aria-label="Loading Sale Earn" aria-live="polite">
@@ -2541,13 +2567,13 @@ function ensurePlatformConfig(){
  return S.platformConfig;
 }
 ensurePlatformConfig();
-const DEMO_RESET_VERSION="saleearn_clean_start_v4_keep_products";
+const DEMO_RESET_VERSION="saleearn_clean_start_v5_keep_products";
 /* One-time clean reset: keep all products and account/store records, but clear
    money, sales, payouts, subscriptions/plans, ads and other transactional/admin activity. */
 function resetOperationalDataKeepProducts(){
  try{
   // Products stay exactly in place, but their displayed legacy sales counters are reset.
-  (S.products||[]).forEach(p=>{if(p&&Object.prototype.hasOwnProperty.call(p,"sales"))p.sales=0});
+  (S.products||[]).forEach(p=>{if(!p)return;if(Object.prototype.hasOwnProperty.call(p,"sales"))p.sales=0;});
   S.orders=[];
   S.payouts=[];
   S.ads=[];
@@ -4168,6 +4194,22 @@ function payoutIntegrity(){
  const rank={high:0,medium:1,low:2};return out.sort((a,b)=>rank[a.lv]-rank[b.lv]);
 }
 function payoutLog(p,action,extra){p.history=Array.isArray(p.history)?p.history:[];p.history.push({at:nowISO(),by:S.currentUser?.id||null,action,...(extra||{})})}
+function adminPayoutIntegrityDetails(sid,msg){
+ if(!adminOnly())return;
+ const sl=seller(sid),u=(S.users||[]).find(x=>x.sellerId===sid),L=sellerLedger(sid);
+ const sales=[...(L.orders||[])].sort((a,b)=>new Date(b.date||0)-new Date(a.date||0)).slice(0,12);
+ const payouts=(S.payouts||[]).filter(x=>x.sellerId===sid).sort((a,b)=>new Date(b.date||0)-new Date(a.date||0)).slice(0,12);
+ const line=(k,v)=>`<tr><td>${k}</td><td style="text-align:right"><b>${v}</b></td></tr>`;
+ document.getElementById('modalRoot').innerHTML=`<div class="modal-bg"><div class="modal" style="max-width:980px;width:96%;max-height:92vh;overflow:auto"><button class="btn iconbtn close" onclick="closeModal()">&#10005;</button>
+ <h2 style="margin-top:0">Money Integrity — @${esc(sid||'-')}</h2>
+ <p class="small muted">${esc(msg||'')} </p>
+ <div class="admin-actions" style="margin-bottom:16px">${u?`<button class="btn" onclick="closeModal();adminNav('user/${esc(u.id)}')">Open User</button>`:''}<button class="btn" onclick="closeModal();adminNav('seller/${esc(sid)}')">Open Seller</button><button class="btn" onclick="closeModal();adminNav('payouts')">Open Withdrawals</button></div>
+ <div class="admin-detail"><div class="admin-detail-box"><h3>Ledger Summary</h3><table class="admin-table"><tbody>${line('Successful sales',L.sales)}${line('Gross sales',money(L.gross))}${line('Platform fee',money(L.fee))}${line('Seller net earnings',money(L.earned))}${line('Already paid',money(L.paid))}${line('Pending payouts',money(L.pending))}${line('Spent on services',money(L.spent))}${line('Available To Receive',money(L.available))}${line('Ledger shortfall',money(L.deficit))}</tbody></table></div>
+ <div class="admin-detail-box"><h3>Seller / Account</h3><p><b>@${esc(sid)}</b> · ${esc(sl.name||sl.owner||'-')}</p><p>User ID: <b>${esc(u?.userId||u?.id||'-')}</b></p><p>Email: ${esc(u?.email||'-')}</p><p>Plan: ${esc(sl.plan||'FREE')}</p><p>Score: ${esc(u?.score??sl.score??'-')}</p></div></div>
+ <h3>Recent Sales</h3><div class="se-admin-detail-list"><table class="admin-table"><thead><tr><th>Date</th><th>Order</th><th>Product</th><th>Paid</th><th>Seller Share</th><th>Payment Ref</th></tr></thead><tbody>${sales.map(o=>`<tr class="data-row" onclick="closeModal();adminNav('order/${esc(o.id)}')"><td>${payoutFmtDate(o.date)}</td><td>${esc(o.id)}</td><td>${esc(o.productTitle||product(o.productId)?.title||'Product')}</td><td>${money(o.amount)}</td><td>${money(payoutOrderNet(o))}</td><td>${esc(o.gatewayPaymentId||'NONE')}</td></tr>`).join('')||'<tr><td colspan="6">No successful sales.</td></tr>'}</tbody></table></div>
+ <h3>Recent Payouts</h3><div class="se-admin-detail-list"><table class="admin-table"><thead><tr><th>Date</th><th>Amount</th><th>Status</th><th>UPI</th><th>Reference</th></tr></thead><tbody>${payouts.map(p=>`<tr class="data-row" onclick="closeModal();adminPayoutDetails('${esc(p.id)}')"><td>${payoutFmtDate(p.date)}</td><td>${money(p.amount)}</td><td>${esc(payoutStatusUpper(p))}</td><td>${esc(p.upi||'-')}</td><td>${esc(p.utr||p.cancelReason||'-')}</td></tr>`).join('')||'<tr><td colspan="5">No payouts.</td></tr>'}</tbody></table></div>
+ <div class="modal-footer"><button class="btn" onclick="closeModal()">Close</button></div></div></div>`;
+}
 function adminPayouts(){
  const P=S.payouts||[],cache={},L=sid=>cache[sid]||(cache[sid]=sellerLedger(sid));
  const pend=P.filter(x=>payoutStatusUpper(x)==='PENDING'),paid=P.filter(x=>PAYOUT_PAID_STATES.includes(payoutStatusUpper(x))),canc=P.filter(x=>payoutStatusUpper(x)==='CANCELLED');
@@ -4181,8 +4223,8 @@ function adminPayouts(){
   <td><span class="admin-pill ${cls}">${esc(st)}</span>${x.utr?`<div class="small muted">Ref: ${esc(x.utr)}</div>`:''}</td><td>${payoutFmtDate(x.date)}</td>
   <td style="white-space:nowrap"><button class="btn" data-id="${esc(x.id||'')}" onclick="adminPayoutDetails(this.dataset.id)">Details</button>${st==='PENDING'?` <button class="btn primary" data-id="${esc(x.id||'')}" onclick="adminMarkPayoutPaid(this.dataset.id)">Paid</button> <button class="btn danger" data-id="${esc(x.id||'')}" onclick="adminCancelPayout(this.dataset.id)">Cancel</button>`:''}</td></tr>`}).join('');
  return adminLayout('payouts','Withdrawals',`<div class="admin-kpis"><div class="admin-kpi"><span>Pending requests</span><b>${pend.length} / ${money(sum(pend))}</b></div><div class="admin-kpi"><span>Total paid out</span><b>${money(sum(paid))}</b></div><div class="admin-kpi"><span>Cancelled</span><b>${canc.length}</b></div><div class="admin-kpi"><span>Money glitches found</span><b style="color:${high?'#ef5b67':'#17b77d'}">${high?high+' HIGH':'None'}</b></div></div>
- <div class="admin-card"><h2>Money Integrity Check</h2><div class="sub">Checked automatically every time this page opens. Fix every HIGH item before paying anyone.</div>${issues.length?`<table class="admin-table"><thead><tr><th>Level</th><th>Seller</th><th>Problem</th></tr></thead><tbody>${issues.slice(0,40).map(i=>`<tr><td>${pill(i.lv)}</td><td>@${esc(i.sid)}</td><td>${esc(i.msg)}</td></tr>`).join('')}</tbody></table>${issues.length>40?`<div class="small muted" style="padding:8px">+ ${issues.length-40} more</div>`:''}`:'<div class="admin-empty">All balances match. No glitch found.</div>'}</div>
- <div class="admin-card"><h2>Seller Payout Requests</h2><div class="sub">Manual payout: pay the seller on UPI yourself, then press Paid and enter the bank/UPI transaction reference. Use Details to see the seller's full sales and money history first.</div><div style="overflow-x:auto"><table class="admin-table"><thead><tr><th>Seller</th><th>User ID</th><th>Amount</th><th>UPI</th><th>Seller money</th><th>Status</th><th>Requested At</th><th>Action</th></tr></thead><tbody>${rows||'<tr><td colspan="8"><div class="admin-empty">No payout requests.</div></td></tr>'}</tbody></table></div></div>`)}
+ <div class="admin-card"><h2>Money Integrity Check</h2><div class="sub">Checked automatically every time this page opens. Fix every HIGH item before paying anyone.</div>${issues.length?`<div class="se-scroll-panel"><table class="admin-table"><thead><tr><th>Level</th><th>Seller</th><th>Problem</th><th>Open</th></tr></thead><tbody>${issues.slice(0,40).map(i=>`<tr class="data-row" onclick="adminPayoutIntegrityDetails('${esc(i.sid)}','${esc(i.msg).replace(/'/g,"&#39;")}')"><td>${pill(i.lv)}</td><td>@${esc(i.sid)}</td><td>${esc(i.msg)}</td><td><button class="btn" onclick="event.stopPropagation();adminPayoutIntegrityDetails('${esc(i.sid)}','${esc(i.msg).replace(/'/g,"&#39;")}')">Details</button></td></tr>`).join('')}</tbody></table></div>${issues.length>40?`<div class="small muted" style="padding:8px">+ ${issues.length-40} more</div>`:''}`:'<div class="admin-empty">All balances match. No glitch found.</div>'}</div>
+ <div class="admin-card"><h2>Seller Payout Requests</h2><div class="sub">Manual payout: pay the seller on UPI yourself, then press Paid and enter the bank/UPI transaction reference. Use Details to see the seller's full sales and money history first.</div><div class="se-scroll-panel"><table class="admin-table"><thead><tr><th>Seller</th><th>User ID</th><th>Amount</th><th>UPI</th><th>Seller money</th><th>Status</th><th>Requested At</th><th>Action</th></tr></thead><tbody>${rows||'<tr><td colspan="8"><div class="admin-empty">No payout requests.</div></td></tr>'}</tbody></table></div></div>`)}
 function adminPayoutDetails(id){
  if(!adminOnly())return;
  const p=(S.payouts||[]).find(x=>String(x.id)===String(id));if(!p){toast('Payout not found');return}
@@ -4334,7 +4376,12 @@ function detectRiskAlerts(){
  const refs={};(S.gatewayPayments||[]).forEach(t=>{const refId=t.meta?.refId;if(refId) (refs[refId]??=[]).push(t.id)});Object.entries(refs).forEach(([refId,ids])=>{if(ids.length>1)alerts.push({type:'Payment Reference Reuse',severity:'HIGH',subject:refId,reason:'The same payment reference appears more than once',evidence:ids.join(', ')})});
  return alerts;
 }
-function adminRisk(){const alerts=detectRiskAlerts();S.riskAlerts=alerts.map((a,i)=>({...a,id:'risk_'+i,date:nowISO()}));save();return adminLayout('risk','Fraud Detection / Risk Center',`<div class="admin-kpis"><div class="admin-kpi"><span>Risk Alerts</span><b>${alerts.length}</b></div><div class="admin-kpi"><span>High Severity</span><b>${alerts.filter(x=>x.severity==='HIGH').length}</b></div><div class="admin-kpi"><span>Possible Linked Signals</span><b>${alerts.filter(x=>x.type==='Linked Account Signal').length}</b></div><div class="admin-kpi"><span>Security Events</span><b>${(S.securityEvents||[]).length}</b></div></div><div class="admin-card"><div class="section-head"><div><h2>Signal-based Risk Alerts</h2><div class="sub">These are signals, not proof that two accounts belong to the same person. Admin review is required.</div></div><button class="btn" onclick="adminRisk()">Refresh Scan</button></div>${alerts.map(a=>`<div class="security-row"><div><b>${esc(a.type)}</b><div class="small muted">${esc(a.subject)} · ${esc(a.reason)}</div><div class="small muted">Evidence: ${esc(a.evidence||'-')}</div></div><span class="admin-pill ${a.severity==='HIGH'?'danger':'warn'}">${a.severity}</span></div>`).join('')||'<div class="admin-empty">No current risk signals detected.</div>'}</div>`)}
+function adminRiskDetails(a){
+ if(!adminOnly()||!a)return;
+ const u=(S.users||[]).find(x=>x.id===a.userId||x.userId===a.userId||x.sellerId===a.sellerId),sid=a.sellerId||u?.sellerId||'';
+ document.getElementById('modalRoot').innerHTML=`<div class="modal-bg"><div class="modal" style="max-width:720px;width:94%"><button class="btn iconbtn close" onclick="closeModal()">&#10005;</button><h2 style="margin-top:0">Risk Signal Details</h2><p><span class="admin-pill ${a.severity==='HIGH'?'danger':'warn'}">${esc(a.severity||'')}</span> <b>${esc(a.type||'Signal')}</b></p><div class="admin-detail"><div class="admin-detail-box"><h3>Subject</h3><p>${esc(a.subject||'-')}</p><p class="small muted">User: ${esc(a.userId||'-')}<br>Seller: ${esc(sid||'-')}</p></div><div class="admin-detail-box"><h3>Reason & Evidence</h3><p>${esc(a.reason||'-')}</p><p class="small muted">${esc(a.evidence||'-')}</p></div></div><div class="admin-actions" style="margin-top:16px">${u?`<button class="btn" onclick="closeModal();adminNav('user/${esc(u.id)}')">Open User</button>`:''}${sid?`<button class="btn" onclick="closeModal();adminNav('seller/${esc(sid)}')">Open Seller</button>`:''}<button class="btn" onclick="closeModal();adminNav('security')">Open Security</button></div><div class="modal-footer"><button class="btn" onclick="closeModal()">Close</button></div></div></div>`;
+}
+function adminRisk(){const alerts=detectRiskAlerts();S.riskAlerts=alerts.map((a,i)=>({...a,id:'risk_'+i,date:nowISO()}));save();return adminLayout('risk','Fraud Detection / Risk Center',`<div class="admin-kpis"><div class="admin-kpi"><span>Risk Alerts</span><b>${alerts.length}</b></div><div class="admin-kpi"><span>High Severity</span><b>${alerts.filter(x=>x.severity==='HIGH').length}</b></div><div class="admin-kpi"><span>Possible Linked Signals</span><b>${alerts.filter(x=>x.type==='Linked Account Signal').length}</b></div><div class="admin-kpi"><span>Security Events</span><b>${(S.securityEvents||[]).length}</b></div></div><div class="admin-card"><div class="section-head"><div><h2>Signal-based Risk Alerts</h2><div class="sub">These are signals, not proof that two accounts belong to the same person. Admin review is required.</div></div><button class="btn" onclick="adminRisk()">Refresh Scan</button></div>${alerts.map((a,i)=>`<div class="security-row" style="cursor:pointer" onclick="adminRiskDetails(S.riskAlerts[${i}]||{})"><div><b>${esc(a.type)}</b><div class="small muted">${esc(a.subject)} · ${esc(a.reason)}</div><div class="small muted">Evidence: ${esc(a.evidence||'-')}</div></div><span class="admin-pill ${a.severity==='HIGH'?'danger':'warn'}">${a.severity}</span></div>`).join('')||'<div class="admin-empty">No current risk signals detected.</div>'}</div>`)}
 function analyticsOrders(start,end){return (S.orders||[]).filter(o=>o.status==='SUCCESS'&&(!start||new Date(o.date)>=start)&&(!end||new Date(o.date)<end))}
 function adminAnalytics(){
  const start=window.adminAnalyticsStart?new Date(window.adminAnalyticsStart):new Date(Date.now()-30*86400000);const end=window.adminAnalyticsEnd?new Date(window.adminAnalyticsEnd+'T23:59:59'):new Date();const os=analyticsOrders(start,end);
@@ -4485,8 +4532,8 @@ function dashPayouts(){
  const minPayout=Math.max(30,Number(advState().payoutMin||30));
  const maxPayout=Number(advState().payoutMax||0);
  return dashShell("payouts",`<div class="dash-card" style="background:#111a2d;color:#fff"><div style="display:flex;justify-content:space-between"><h3>Your Earnings Overview</h3><span class="pill" style="background:#143d3a;color:#1ac18a">Secure Wallet</span></div><div class="metric-grid" style="margin-top:20px"><div class="metric" style="background:#1d293c;color:#fff;border:0"><span class="metric-label total">Lifetime Earnings</span><h2 style="color:#69a8ff">${money(earned)}</h2></div><div class="metric" style="background:#1d293c;color:#fff;border:0"><span class="metric-label receive">Available To Receive</span><h2 style="color:#ffb31a">${money(available)}</h2></div><div class="metric" style="background:#1d293c;color:#fff;border:0"><span class="metric-label received">Already Received</span><h2 style="color:#6be0ae">${money(received)}</h2></div></div></div>
- <div class="dash-card"><h3>Request Payout</h3><p class="small muted">Available To Receive: <b>${money(available)}</b> · Minimum: ${money(minPayout)}${maxPayout?` · Maximum: ${money(maxPayout)}`:""}</p><div class="field"><label>Amount (${S.settings.currency})</label><input id="poAmt" type="number" min="${minPayout}" ${maxPayout?`max="${maxPayout}"`:""} placeholder="Minimum payout ${money(minPayout)}"></div><div class="field"><label>Payout UPI ID</label><input id="poUpi" value="${esc(currentSeller().upi||"")}" placeholder="yourname@upi"></div><div class="field"><label>Note to Admin (Optional)</label><input id="poNote" maxlength="50" placeholder="e.g. Urgent payout"></div><button class="btn primary" style="width:100%" onclick="requestPayout()">₹ Request Payout</button></div>
- <div class="dash-card" style="padding:0;overflow:hidden"><h3 style="padding:18px;margin:0">Payout Requests</h3><table class="dash-table"><thead><tr><th>Requested</th><th>Approved</th><th>Status</th><th>Date</th><th>Note</th></tr></thead><tbody>${(S.payouts||[]).filter(x=>x.sellerId===sid).map(x=>`<tr><td>${money(x.amount)}</td><td>${["APPROVED","PAID","SUCCESS","RECEIVED"].includes(payoutStatusUpper(x))?money(x.amount):"—"}</td><td><span class="status ${payoutStatusUpper(x)==="CANCELLED"?'cancelled':(['PENDING','PROCESSING','UNDER REVIEW','ON HOLD'].includes(payoutStatusUpper(x))?'pending':'success')}">${esc(x.status||'PENDING')}</span></td><td>${x.date?new Date(x.date).toLocaleString('en-IN'):'-'}</td><td>${esc(x.note||"")}${x.utr?`<div class="small muted">Ref: ${esc(x.utr)}</div>`:""}${x.cancelReason?`<div class="small muted">Reason: ${esc(x.cancelReason)}</div>`:""}</td></tr>`).join("")||`<tr><td colspan="5">No payout requests yet.</td></tr>`}</tbody></table></div>`)
+ <div class="dash-card"><h3>Request Payout</h3><p class="small muted">Available To Receive: <b>${money(available)}</b> · Minimum: ${money(minPayout)}${maxPayout?` · Maximum: ${money(maxPayout)}`:""}</p><div class="field"><label>Amount (${S.settings.currency})</label><input id="poAmt" type="number" min="${minPayout}" ${maxPayout?`max="${maxPayout}"`:""} placeholder="Minimum payout ${money(minPayout)}"></div><div class="field"><label>Payout UPI ID</label><input id="poUpi" value="${esc(currentSeller().upi||"")}" placeholder="yourname@upi"></div><div class="field"><label>Note to Admin (Optional)</label><input id="poNote" maxlength="50" placeholder="e.g. Urgent payout"></div><button class="btn primary" style="width:100%" onclick="requestPayout()">₹ Request Payout</button><div class="small muted" style="text-align:center;margin-top:10px">Payout will be received within 24 hours after admin approval.</div></div>
+ <div class="dash-card" style="padding:0;overflow:hidden"><h3 style="padding:18px;margin:0">Payout Requests</h3><div class="se-scroll-panel"><table class="dash-table"><thead><tr><th>Requested</th><th>Approved</th><th>Status</th><th>Date</th><th>Note</th></tr></thead><tbody>${(S.payouts||[]).filter(x=>x.sellerId===sid).map(x=>`<tr><td>${money(x.amount)}</td><td>${["APPROVED","PAID","SUCCESS","RECEIVED"].includes(payoutStatusUpper(x))?money(x.amount):"—"}</td><td><span class="status ${payoutStatusUpper(x)==="CANCELLED"?'cancelled':(['PENDING','PROCESSING','UNDER REVIEW','ON HOLD'].includes(payoutStatusUpper(x))?'pending':'success')}">${esc(x.status||'PENDING')}</span></td><td>${x.date?new Date(x.date).toLocaleString('en-IN'):'-'}</td><td>${esc(x.note||"")}${x.utr?`<div class="small muted">Ref: ${esc(x.utr)}</div>`:""}${x.cancelReason?`<div class="small muted">Reason: ${esc(x.cancelReason)}</div>`:""}</td></tr>`).join("")||`<tr><td colspan="5">No payout requests yet.</td></tr>`}</tbody></table></div></div>`)
 }
 async function seFreshBalance(){
  /* Pull the newest server copy first so a stale browser tab can never over-withdraw. */
