@@ -2677,6 +2677,32 @@ function seFailure(e){
  console.warn('Cloud sync delayed',e?.message||e);
 }
 function seSucceeded(){seFailures=0;seRetryAt=0;seStopped=false;}
+/* Client-side money guard: a normal (non-admin) browser can never edit or delete payouts / sale amounts / ledgers that already exist on the server. */
+function seGuardNonAdmin(sent,remote){
+ try{
+  if(typeof isAdmin==='function'&&isAdmin())return;
+  const cl=x=>JSON.parse(JSON.stringify(x)),byId=a=>new Map((Array.isArray(a)?a:[]).filter(x=>x&&x.id!=null).map(x=>[String(x.id),x]));
+  /* payouts: existing rows are frozen, new rows must be plain PENDING requests */
+  const rp=byId(remote.payouts),fresh=[];
+  for(const p of (Array.isArray(sent.payouts)?sent.payouts:[])){
+   if(!p||p.id==null||rp.has(String(p.id)))continue;
+   if(String(p.status||'').toUpperCase()!=='PENDING'||!(Number(p.amount)>0))continue;
+   ['paidAt','paidBy','utr','processedAt','receivedAmount','cancelledAt','cancelledBy','cancelReason'].forEach(k=>delete p[k]);p.paymentVerified=false;fresh.push(p);
+  }
+  sent.payouts=[...fresh,...[...rp.values()].map(cl)];
+  /* orders: money fields of existing sales are frozen; sales can't be deleted */
+  const F=['status','amount','netSellerAmount','platformFeeRate','platformFee','sellerId','productId','gatewayPaymentId','paymentVerified','originalAmount','couponDiscount'];
+  const ro=byId(remote.orders),so=byId(sent.orders);sent.orders=Array.isArray(sent.orders)?sent.orders:[];
+  sent.orders.forEach(o=>{const r=o&&ro.get(String(o.id));if(r)F.forEach(k=>{if(r[k]===undefined)delete o[k];else o[k]=cl(r[k])})});
+  for(const [id,r] of ro)if(!so.has(id))sent.orders.push(cl(r));
+  /* append-only ledgers: rows can be added, never edited or removed */
+  for(const key of ['balancePayments','sellerFinanceLedger','adminFinancialLedger','adminCommissionAdjustments']){
+   const rr=byId(remote[key]),ss=byId(sent[key]),add=(Array.isArray(sent[key])?sent[key]:[]).filter(x=>x&&x.id!=null&&!rr.has(String(x.id)));
+   if(key==='sellerFinanceLedger'||key==='adminFinancialLedger'||key==='adminCommissionAdjustments')sent[key]=[...[...rr.values()].map(cl)]; /* admin-only ledgers: non-admin adds nothing */
+   else sent[key]=[...add,...[...rr.values()].map(cl)];
+  }
+ }catch(e){console.warn('money guard error',e)}
+}
 async function pushOnlineState(){
  if(!S.currentUser||!ONLINE_READY||ONLINE_LOADING||seWriteBusy||seReadBusy||!ONLINE_LOCAL_DIRTY||seStopped||!seOnline())return;
  if(Date.now()<seRetryAt){queueOnlineSync();return;}
@@ -2687,7 +2713,7 @@ async function pushOnlineState(){
   // Always start from the newest server revision. A failed compare-and-swap is
   // retried immediately instead of waiting for the normal debounce timer.
   for(let attempt=0;attempt<5;attempt++){
-   const row=await seReadFull(),base=seClone(row?.data||{}),remote=seClone(row?.data||{});
+   const row=await seReadFull(),base=seClone(row?.data||{}),remote=seClone(row?.data||{});seGuardNonAdmin(sent,remote);
    const merged=seMerge(base,sent,remote)||{};
    if(seSame(merged,remote)){
     seSetBase(row);
@@ -4094,77 +4120,132 @@ function adminReviews(){const rows=[];Object.entries(S.reviews||{}).forEach(([pi
 function adminEditReview(pid,rid){if(!adminOnly())return;const r=(S.reviews?.[pid]||[]).find(x=>x.id===rid);if(!r){toast('Review not found');return}const text=prompt('Edit review:',r.text||'');if(text===null)return;const clean=String(text).trim();if(!clean){toast('Review cannot be empty');return}r.text=clean;r.editedAt=nowISO();r.editedBy=S.currentUser?.id||'ADMIN';logAdminAudit('Edited review',rid,{productId:pid});save();toast('Review updated');render()}
 function adminSales(){const st=adminStats();const bySeller={};st.orders.forEach(x=>{bySeller[x.sellerId]=bySeller[x.sellerId]||{sales:0,orders:0,net:0};bySeller[x.sellerId].sales+=Number(x.amount||0);bySeller[x.sellerId].net+=Number(x.netSellerAmount||0);bySeller[x.sellerId].orders++});const today=new Date().toDateString();const td=st.orders.filter(x=>new Date(x.date).toDateString()===today);return adminLayout('sales','Sales & Earnings',`<div class="admin-kpis"><div class="admin-kpi"><span>Total Sales</span><b>${money(st.sales)}</b></div><div class="admin-kpi"><span>Net Seller Earnings</span><b>${money(st.earnings)}</b></div><div class="admin-kpi"><span>Today's Sales</span><b>${money(td.reduce((a,x)=>a+Number(x.amount||0),0))}</b></div><div class="admin-kpi"><span>Today's Orders</span><b>${td.length}</b></div></div><div class="admin-card"><h2>Seller-wise Sales</h2><div class="sub">See which seller sold which products and how much was earned.</div><table class="admin-table"><thead><tr><th>Seller</th><th>Orders</th><th>Gross Sales</th><th>Net Seller Earnings</th><th>Products Sold</th></tr></thead><tbody>${Object.entries(bySeller).map(([sid,v])=>`<tr class="data-row" onclick="adminNav('seller/${sid}')"><td>@${esc(sid)}<div class="small muted">${esc(seller(sid).name)}</div></td><td>${v.orders}</td><td>${money(v.sales)}</td><td>${money(v.net)}</td><td>${S.products.filter(p=>p.sellerId===sid).map(p=>`${esc(p.title)} (${productSales(p.id)})`).join('<br>')||'Deleted product(s) may be in recycle bin'}</td></tr>`).join('')||`<tr><td colspan="5"><div class="admin-empty">No successful sales.</div></td></tr>`}</tbody></table></div>`)}
 function adminSellerDetail(id){const ss=seller(id),ps=S.products.filter(p=>p.sellerId===id),os=S.orders.filter(o=>o.sellerId===id&&o.status==='SUCCESS');return adminLayout('sales','Seller Sales',`<button class="btn admin-back" onclick="adminNav('sales')">← Back to Sales</button><div class="admin-detail"><div class="admin-detail-box"><h2>${esc(ss.name)}</h2><p>Seller ID: @${esc(id)}</p><p>Owner: ${esc(ss.owner||'-')}</p><p>Plan: ${esc(ss.plan||'FREE')}</p>${sellerScoreMarkup(id,true)}<div class="field"><label>Set Seller Score (0–100)</label><div class="score-admin-row"><input id="adminSellerScore" type="number" min="0" max="100" value="${getSellerScore(id)}"><input id="adminSellerScoreReason" placeholder="Reason for manual update"><button class="btn primary" onclick="adminSetSellerScore('${id}',document.getElementById('adminSellerScore').value)">Save Score</button></div></div></div><div class="admin-detail-box"><div class="admin-stat-row"><div class="admin-stat"><b>${os.length}</b><span class="small muted">Successful sales</span></div><div class="admin-stat"><b>${money(os.reduce((a,x)=>a+Number(x.amount||0),0))}</b><span class="small muted">Gross</span></div><div class="admin-stat"><b>${money(os.reduce((a,x)=>a+Number(x.netSellerAmount||0),0))}</b><span class="small muted">Net</span></div></div></div></div><div class="admin-card"><h2>Products Sold</h2>${ps.map(p=>`<div class="security-row"><div><b>${esc(p.title)}</b><div class="small muted">${esc(p.id)} · ${productSales(p.id)} sales</div></div><span>${money(os.filter(o=>o.productId===p.id).reduce((a,x)=>a+Number(x.amount||0),0))}</span></div>`).join('')||'<div class="admin-empty">No live products.</div>'}</div>`)}
-function adminPayouts(){
- const pending=(S.payouts||[]).filter(x=>String(x.status||'PENDING').toUpperCase()==='PENDING').length;
- return adminLayout('payouts','Withdrawals',`
- <div class="admin-card">
-  <div class="section-head">
-   <div><h2>Seller Payout Requests</h2><div class="sub">New requests stay PENDING until admin manually pays the seller or cancels the request.</div></div>
-   ${pending?`<span class="admin-pill warn">${pending} NEW</span>`:''}
-  </div>
-  <table class="admin-table">
-   <thead><tr><th>User ID</th><th>Amount</th><th>UPI ID</th><th>Status</th><th>Date / Time</th><th>Action</th></tr></thead>
-   <tbody>
-    ${(S.payouts||[]).map(x=>{
-      const st=String(x.status||'PENDING').toUpperCase();
-      const cls=st==='CANCELLED'?'danger':st==='PENDING'?'warn':'success';
-      const sellerName=seller(x.sellerId)?.name||'Seller';
-      return `<tr>
-       <td><b>@${esc(x.sellerId||'')}</b><div class="small muted">${esc(sellerName)}</div></td>
-       <td>${money(x.amount)}</td>
-       <td>${esc(x.upi||seller(x.sellerId).upi||'-')}</td>
-       <td><span class="admin-pill ${cls}">${esc(st)}</span></td>
-       <td>${x.date?new Date(x.date).toLocaleString('en-IN'):'-'}</td>
-       <td>${st==='PENDING'?`<div style="display:flex;gap:6px;flex-wrap:wrap">
-         <button class="btn primary" onclick="adminMarkPayoutPaid('${esc(x.id||'')}')">PAID</button>
-         <button class="btn danger" onclick="adminCancelPayout('${esc(x.id||'')}')">CANCEL</button>
-       </div>`:(st==='PAID'?`<span class="small muted">${x.processedAt?new Date(x.processedAt).toLocaleString('en-IN'):''}</span>`:'—')}</td>
-      </tr>`;
-    }).join('')||`<tr><td colspan="6"><div class="admin-empty">No payout requests.</div></td></tr>`}
-   </tbody>
-  </table>
- </div>`)
+/* ================= SECURE PAYOUT + LEDGER (v2) ================= */
+const PAYOUT_PAID_STATES=["APPROVED","PAID","SUCCESS","RECEIVED"];
+function r2(n){return Math.round((Number(n)||0)*100)/100}
+function payoutOrderNet(o){const v=(o.netSellerAmount!==undefined&&o.netSellerAmount!==null&&o.netSellerAmount!=='')?Number(o.netSellerAmount):Number(o.amount||0)*(1-Number(o.platformFeeRate??.20));return Number.isFinite(v)?v:0}
+function payoutFmtDate(d){return d?new Date(d).toLocaleString('en-IN'):'-'}
+/* One single source of truth for a seller's money. Nothing is hidden by clamping: 'raw' can go negative = glitch. */
+function sellerLedger(sid){
+ const orders=(S.orders||[]).filter(o=>o&&o.sellerId===sid&&String(o.status||'').toUpperCase()==='SUCCESS'&&o.paymentVerified!==false);
+ const gross=r2(orders.reduce((a,o)=>a+Number(o.amount||0),0));
+ const earned=r2(orders.reduce((a,o)=>a+payoutOrderNet(o),0));
+ const P=(S.payouts||[]).filter(x=>x&&x.sellerId===sid);
+ const paid=r2(P.filter(x=>PAYOUT_PAID_STATES.includes(payoutStatusUpper(x))).reduce((a,x)=>a+Number(x.amount||0),0));
+ const pending=r2(P.filter(x=>payoutReservesBalance(x)).reduce((a,x)=>a+Number(x.amount||0),0));
+ const balSpent=(S.balancePayments||[]).filter(x=>x.sellerId===sid&&String(x.source||"").toUpperCase()==="BALANCE"&&String(x.status||"").toUpperCase()==="SUCCESS"&&x.paymentVerified!==false).reduce((a,x)=>a+Number(x.amount||0),0);
+ const legacyAds=(S.ads||[]).filter(x=>x.sellerId===sid&&!x.paymentSource&&String(x.status||"").toUpperCase()!=="CANCELLED").reduce((a,x)=>a+Number(x.cost||0),0);
+ const legacySubs=(S.subscriptions||[]).filter(x=>x.sellerId===sid&&!x.paymentSource).reduce((a,x)=>a+Number(x.amount||0),0);
+ const adj=r2(typeof financeSum==='function'?(Number(financeSum(sid,'TO_RECEIVE'))||0):0);
+ const spent=r2(balSpent+legacyAds+legacySubs);
+ const raw=r2(earned-paid-pending-spent+adj);
+ return {sid,orders,sales:orders.length,gross,fee:r2(gross-earned),earned,paid,pending,spent,adj,raw,available:Math.max(0,raw),deficit:raw<0?r2(-raw):0};
 }
+/* Scans the whole platform for money glitches so admin can catch them early. */
+function payoutIntegrity(){
+ const out=[],add=(lv,sid,msg)=>out.push({lv,sid:sid||'-',msg});
+ const sids=new Set(Object.keys(S.sellers||{}));(S.payouts||[]).forEach(p=>p&&p.sellerId&&sids.add(p.sellerId));
+ sids.forEach(sid=>{const L=sellerLedger(sid);if(L.deficit>0)add('high',sid,`Ledger is short by ${money(L.deficit)} (paid + pending + spent is more than earned). Do NOT pay until checked.`)});
+ const utrs={};
+ (S.payouts||[]).forEach(p=>{if(!p)return;const st=payoutStatusUpper(p),amt=Number(p.amount);
+  if(!Number.isFinite(amt)||amt<=0)add('high',p.sellerId,`Payout ${p.id} has an invalid amount`);
+  if(!S.sellers?.[p.sellerId])add('high',p.sellerId,`Payout ${p.id} belongs to an unknown seller`);
+  if(PAYOUT_PAID_STATES.includes(st)){
+   if(!p.utr)add('low',p.sellerId,`Payout ${p.id} (${money(amt)}) is Paid but has no bank/UPI reference`);
+   else{const k=String(p.utr).toLowerCase();if(utrs[k])add('high',p.sellerId,`Reference ${p.utr} is used on more than one payout`);utrs[k]=1}
+  }});
+ const gw={};
+ (S.orders||[]).forEach(o=>{if(!o||String(o.status||'').toUpperCase()!=='SUCCESS')return;
+  const amt=Number(o.amount||0),net=payoutOrderNet(o);
+  if(amt>0){
+   if(!o.gatewayPaymentId)add('medium',o.sellerId,`Sale ${o.id} has no gateway payment reference`);
+   else{if(gw[o.gatewayPaymentId])add('high',o.sellerId,`Payment ref ${o.gatewayPaymentId} is used on 2+ sales`);gw[o.gatewayPaymentId]=1}
+   if(o.paymentVerified!==true)add('medium',o.sellerId,`Sale ${o.id} is not marked payment-verified`);
+  }
+  if(net>amt+0.01||net<0)add('high',o.sellerId,`Sale ${o.id}: seller share ${money(net)} is more than customer paid ${money(amt)}`);
+  else if(o.platformFeeRate!=null&&Math.abs(net-amt*(1-Number(o.platformFeeRate)))>0.05)add('medium',o.sellerId,`Sale ${o.id}: seller share does not match platform fee`);
+ });
+ const rank={high:0,medium:1,low:2};return out.sort((a,b)=>rank[a.lv]-rank[b.lv]);
+}
+function payoutLog(p,action,extra){p.history=Array.isArray(p.history)?p.history:[];p.history.push({at:nowISO(),by:S.currentUser?.id||null,action,...(extra||{})})}
+function adminPayouts(){
+ const P=S.payouts||[],cache={},L=sid=>cache[sid]||(cache[sid]=sellerLedger(sid));
+ const pend=P.filter(x=>payoutStatusUpper(x)==='PENDING'),paid=P.filter(x=>PAYOUT_PAID_STATES.includes(payoutStatusUpper(x))),canc=P.filter(x=>payoutStatusUpper(x)==='CANCELLED');
+ const sum=a=>r2(a.reduce((s,x)=>s+Number(x.amount||0),0));
+ const issues=payoutIntegrity(),high=issues.filter(i=>i.lv==='high').length;
+ const pill=lv=>`<span class="admin-pill ${lv==='high'?'danger':lv==='medium'?'warn':'success'}">${lv.toUpperCase()}</span>`;
+ const rows=P.map(x=>{const st=payoutStatusUpper(x),cls=st==='CANCELLED'?'danger':st==='PENDING'?'warn':'success',sid=x.sellerId,l=L(sid);
+  const u=S.users?.find(u=>u.sellerId===sid),bad=l.deficit>0;
+  return `<tr><td><b>@${esc(sid||'-')}</b><div class="small muted">${esc(u?.email||seller(sid).name||'')}</div></td><td>${esc(x.userId||u?.userId||u?.id||'-')}</td><td><b>${money(x.amount)}</b></td><td>${esc(x.upi||seller(sid).upi||'-')}</td>
+  <td class="small">Sales: <b>${l.sales}</b><br>Earned: ${money(l.earned)}<br>Paid: ${money(l.paid)}<br>Available: <b>${money(l.available)}</b>${bad?`<br><span style="color:#ef5b67;font-weight:800">GLITCH: short ${money(l.deficit)}</span>`:''}</td>
+  <td><span class="admin-pill ${cls}">${esc(st)}</span>${x.utr?`<div class="small muted">Ref: ${esc(x.utr)}</div>`:''}</td><td>${payoutFmtDate(x.date)}</td>
+  <td style="white-space:nowrap"><button class="btn" data-id="${esc(x.id||'')}" onclick="adminPayoutDetails(this.dataset.id)">Details</button>${st==='PENDING'?` <button class="btn primary" data-id="${esc(x.id||'')}" onclick="adminMarkPayoutPaid(this.dataset.id)">Paid</button> <button class="btn danger" data-id="${esc(x.id||'')}" onclick="adminCancelPayout(this.dataset.id)">Cancel</button>`:''}</td></tr>`}).join('');
+ return adminLayout('payouts','Withdrawals',`<div class="admin-kpis"><div class="admin-kpi"><span>Pending requests</span><b>${pend.length} / ${money(sum(pend))}</b></div><div class="admin-kpi"><span>Total paid out</span><b>${money(sum(paid))}</b></div><div class="admin-kpi"><span>Cancelled</span><b>${canc.length}</b></div><div class="admin-kpi"><span>Money glitches found</span><b style="color:${high?'#ef5b67':'#17b77d'}">${high?high+' HIGH':'None'}</b></div></div>
+ <div class="admin-card"><h2>Money Integrity Check</h2><div class="sub">Checked automatically every time this page opens. Fix every HIGH item before paying anyone.</div>${issues.length?`<table class="admin-table"><thead><tr><th>Level</th><th>Seller</th><th>Problem</th></tr></thead><tbody>${issues.slice(0,40).map(i=>`<tr><td>${pill(i.lv)}</td><td>@${esc(i.sid)}</td><td>${esc(i.msg)}</td></tr>`).join('')}</tbody></table>${issues.length>40?`<div class="small muted" style="padding:8px">+ ${issues.length-40} more</div>`:''}`:'<div class="admin-empty">All balances match. No glitch found.</div>'}</div>
+ <div class="admin-card"><h2>Seller Payout Requests</h2><div class="sub">Manual payout: pay the seller on UPI yourself, then press Paid and enter the bank/UPI transaction reference. Use Details to see the seller's full sales and money history first.</div><div style="overflow-x:auto"><table class="admin-table"><thead><tr><th>Seller</th><th>User ID</th><th>Amount</th><th>UPI</th><th>Seller money</th><th>Status</th><th>Requested At</th><th>Action</th></tr></thead><tbody>${rows||'<tr><td colspan="8"><div class="admin-empty">No payout requests.</div></td></tr>'}</tbody></table></div></div>`)}
+function adminPayoutDetails(id){
+ if(!adminOnly())return;
+ const p=(S.payouts||[]).find(x=>String(x.id)===String(id));if(!p){toast('Payout not found');return}
+ const sid=p.sellerId,L=sellerLedger(sid),u=S.users?.find(u=>u.sellerId===sid),st=payoutStatusUpper(p),sl=seller(sid);
+ const sales=[...L.orders].sort((a,b)=>new Date(b.date||0)-new Date(a.date||0)).slice(0,10);
+ const others=(S.payouts||[]).filter(x=>x.sellerId===sid&&x.id!==p.id).slice(0,10);
+ const line=(k,v,b)=>`<tr><td>${k}</td><td style="text-align:right">${b?'<b>'+v+'</b>':v}</td></tr>`;
+ const snap=p.snapshot?`<p class="small muted">At request time: ${p.snapshot.sales} sales, earned ${money(p.snapshot.earned)}, already paid ${money(p.snapshot.paidBefore)}, available ${money(p.snapshot.availableBefore)}.</p>`:'';
+ document.getElementById('modalRoot').innerHTML=`<div class="modal-bg"><div class="modal" style="max-width:860px;width:95%;max-height:90vh;overflow:auto"><button class="btn iconbtn close" onclick="closeModal()">&#10005;</button><h2 style="margin-top:0">Payout details</h2>
+ <p><b>@${esc(sid)}</b> ${esc(sl.name||'')} ${sl.suspended?'<span class="admin-pill danger">SUSPENDED</span>':''}<br><span class="small muted">${esc(u?.email||'-')} &middot; User ID ${esc(u?.userId||u?.id||'-')} &middot; Score ${esc(u?.score??sl.score??'-')}</span></p>
+ <p>Request: <b>${money(p.amount)}</b> to <b>${esc(p.upi||'-')}</b> &middot; <span class="admin-pill ${st==='CANCELLED'?'danger':st==='PENDING'?'warn':'success'}">${esc(st)}</span> &middot; ${payoutFmtDate(p.date)}${p.note?`<br>Seller note: ${esc(p.note)}`:''}${p.utr?`<br>Reference: <b>${esc(p.utr)}</b>`:''}${p.cancelReason?`<br>Cancel reason: ${esc(p.cancelReason)}`:''}</p>${snap}
+ <h3>How the seller's money adds up</h3><table class="admin-table"><tbody>${line('Successful sales (count)',L.sales)}${line('Total customers paid (gross)',money(L.gross))}${line('Platform fee kept',money(L.fee))}${line('Seller net earnings',money(L.earned),1)}${L.adj?line('Admin adjustments',money(L.adj)):''}${line('Already paid out',money(L.paid))}${line('Pending requests (incl. this one if pending)',money(L.pending))}${line('Used for ads / plans / services',money(L.spent))}${line('Available To Receive now',money(L.available),1)}</tbody></table>
+ <p>${L.deficit>0?`<span class="admin-pill danger">GLITCH</span> Ledger is short by <b>${money(L.deficit)}</b>. Do not pay this request; investigate the sales below.`:'<span class="admin-pill success">LEDGER OK</span> Earnings cover everything paid, pending and spent.'}</p>
+ <h3>Last ${sales.length} sales</h3><div style="overflow-x:auto"><table class="admin-table"><thead><tr><th>Date</th><th>Order</th><th>Product</th><th>Buyer</th><th>Paid</th><th>Seller gets</th><th>Payment ref</th></tr></thead><tbody>${sales.map(o=>`<tr><td>${payoutFmtDate(o.date)}</td><td>${esc(o.id)}</td><td>${esc(o.productTitle||'')}</td><td>${esc(o.customerEmail||o.customerId||'')}</td><td>${money(o.amount)}</td><td>${money(payoutOrderNet(o))}</td><td>${esc(o.gatewayPaymentId||'NONE')}${o.paymentVerified===true?'':' <span class="admin-pill warn">unverified</span>'}</td></tr>`).join('')||'<tr><td colspan="7">No sales</td></tr>'}</tbody></table></div>
+ <h3>Other payouts of this seller</h3><div style="overflow-x:auto"><table class="admin-table"><thead><tr><th>Date</th><th>Amount</th><th>Status</th><th>Reference / reason</th></tr></thead><tbody>${others.map(x=>`<tr><td>${payoutFmtDate(x.date)}</td><td>${money(x.amount)}</td><td>${esc(payoutStatusUpper(x))}</td><td>${esc(x.utr||x.cancelReason||'')}</td></tr>`).join('')||'<tr><td colspan="4">None</td></tr>'}</tbody></table></div>
+ ${(p.history||[]).length?`<h3>History of this request</h3><ul class="small">${p.history.map(h=>`<li>${payoutFmtDate(h.at)} &ndash; ${esc(h.action)}${h.utr?' (ref '+esc(h.utr)+')':''}${h.reason?' ('+esc(h.reason)+')':''}</li>`).join('')}</ul>`:''}
+ <div class="modal-footer"><button class="btn" onclick="closeModal()">Close</button>${st==='PENDING'?`<button class="btn danger" data-id="${esc(p.id)}" onclick="adminCancelPayout(this.dataset.id)">Cancel</button><button class="btn primary" data-id="${esc(p.id)}" onclick="adminMarkPayoutPaid(this.dataset.id)">Mark Paid</button>`:''}</div></div></div>`}
 function adminMarkPayoutPaid(id){
  if(!adminOnly())return;
- const p=(S.payouts||[]).find(x=>String(x.id)===String(id));
- if(!p){toast('Payout not found');return}
- if(String(p.status||'').toUpperCase()!=='PENDING'){toast('Only pending payouts can be marked PAID');return}
- const s=seller(p.sellerId);
- if(!s){toast('Seller not found');return}
- const amt=Number(p.amount||0);
- const available=Number(sellerAvailableBalance(p.sellerId)||0);
- if(amt<=0||amt>available){toast('Seller balance is not sufficient for this payout');return}
- p.status='PAID';
- p.processedAt=nowISO();
- p.paidAt=p.processedAt;
- p.paidBy=S.currentUser?.id||'ADMIN';
- p.paymentVerified=true;
- p.manualPayout=true;
- p.adminAction='PAID';
- p.paidAmount=amt;
- logAdminAudit('Marked seller payout PAID',id,{sellerId:p.sellerId,amount:amt,upi:p.upi});
- save();
- toast('Payout marked PAID');
- render();
+ const p=(S.payouts||[]).find(x=>String(x.id)===String(id));if(!p){toast('Payout not found');return}
+ if(payoutStatusUpper(p)!=='PENDING'){toast('Only pending payouts can be marked Paid');return}
+ const L=sellerLedger(p.sellerId);
+ document.getElementById('modalRoot').innerHTML=`<div class="modal-bg"><div class="modal" style="max-width:480px"><button class="btn iconbtn close" onclick="closeModal()">&#10005;</button><h2 style="margin-top:0">Confirm payment</h2>
+ <p>Seller <b>@${esc(p.sellerId)}</b><br>Amount <b>${money(p.amount)}</b><br>UPI <b>${esc(p.upi||'-')}</b></p>
+ ${L.deficit>0?`<p style="color:#ef5b67"><b>Blocked:</b> this seller's ledger is short by ${money(L.deficit)}. Open Details and check before paying.</p>`:`<p class="small muted">Ledger OK. Seller earned ${money(L.earned)} from ${L.sales} sales.</p>`}
+ <div class="field"><label>Bank / UPI transaction reference (UTR) *</label><input id="poUtr" maxlength="40" placeholder="e.g. 412345678901" autocomplete="off"></div>
+ <label style="display:flex;gap:8px;align-items:flex-start;margin:12px 0"><input type="checkbox" id="poPaidChk"><span>I have actually sent ${money(p.amount)} to this UPI ID.</span></label>
+ <div class="modal-footer"><button class="btn" onclick="closeModal()">Back</button><button class="btn primary" ${L.deficit>0?'disabled':''} data-id="${esc(p.id)}" onclick="adminConfirmPayoutPaid(this.dataset.id)">Mark as Paid</button></div></div></div>`}
+function adminConfirmPayoutPaid(id){
+ if(!adminOnly())return;if(window.__payoutAdminBusy)return;window.__payoutAdminBusy=true;
+ try{
+  const p=(S.payouts||[]).find(x=>String(x.id)===String(id));if(!p){toast('Payout not found');return}
+  if(payoutStatusUpper(p)!=='PENDING'){toast('Only pending payouts can be marked Paid');return}
+  const utr=String(document.getElementById('poUtr')?.value||'').trim();
+  if(!/^[A-Za-z0-9._\-\/]{6,40}$/.test(utr)){toast('Enter the transaction reference (6-40 letters/numbers)');return}
+  if((S.payouts||[]).some(x=>x.id!==p.id&&x.utr&&String(x.utr).toLowerCase()===utr.toLowerCase())){toast('This reference is already used on another payout');return}
+  if(!document.getElementById('poPaidChk')?.checked){toast('Tick the confirmation box first');return}
+  const amt=r2(p.amount),L=sellerLedger(p.sellerId);
+  if(!(amt>0)){toast('Invalid payout amount');return}
+  if(L.deficit>0){toast('Blocked: seller ledger is short by '+money(L.deficit));return}
+  p.status='PAID';p.utr=utr;p.processedAt=nowISO();p.paidAt=p.processedAt;p.paidBy=S.currentUser?.id||'ADMIN';p.paymentVerified=true;p.manualPayout=true;p.receivedAmount=amt;
+  payoutLog(p,'PAID',{utr,amount:amt});
+  logAdminAudit('Marked payout Paid',p.id,{sellerId:p.sellerId,userId:p.userId,amount:amt,upi:p.upi||'',utr});
+  save();closeModal();toast('Payout marked Paid');render();
+ }finally{window.__payoutAdminBusy=false}
 }
 function adminCancelPayout(id){
  if(!adminOnly())return;
- const p=(S.payouts||[]).find(x=>String(x.id)===String(id));
- if(!p){toast('Payout not found');return}
- if(String(p.status||'').toUpperCase()!=='PENDING'){toast('Only pending payouts can be cancelled');return}
- p.status='CANCELLED';
- p.cancelledAt=nowISO();
- p.cancelledBy=S.currentUser?.id||'ADMIN';
- p.paymentVerified=false;
- p.manualPayout=false;
- p.adminAction='CANCEL';
- p.returnedToBalance=true;
- p.returnedAmount=Number(p.amount||0);
- logAdminAudit('Cancelled seller payout',id,{sellerId:p.sellerId,amount:p.amount,upi:p.upi});
- save();
- toast('Payout cancelled; amount returned to To Receive');
- render();
+ const p=(S.payouts||[]).find(x=>String(x.id)===String(id));if(!p){toast('Payout not found');return}
+ if(payoutStatusUpper(p)!=='PENDING'){toast('Only pending payouts can be cancelled');return}
+ document.getElementById('modalRoot').innerHTML=`<div class="modal-bg"><div class="modal" style="max-width:460px"><button class="btn iconbtn close" onclick="closeModal()">&#10005;</button><h2 style="margin-top:0">Cancel payout</h2><p>${money(p.amount)} for <b>@${esc(p.sellerId)}</b> will go back to the seller's Available To Receive.</p><div class="field"><label>Reason (shown to seller) *</label><input id="poCancelReason" maxlength="80" placeholder="e.g. Wrong UPI ID"></div><div class="modal-footer"><button class="btn" onclick="closeModal()">Back</button><button class="btn danger" data-id="${esc(p.id)}" onclick="adminConfirmCancelPayout(this.dataset.id)">Cancel payout</button></div></div></div>`}
+function adminConfirmCancelPayout(id){
+ if(!adminOnly())return;if(window.__payoutAdminBusy)return;window.__payoutAdminBusy=true;
+ try{
+  const p=(S.payouts||[]).find(x=>String(x.id)===String(id));if(!p){toast('Payout not found');return}
+  if(payoutStatusUpper(p)!=='PENDING'){toast('Only pending payouts can be cancelled');return}
+  const reason=String(document.getElementById('poCancelReason')?.value||'').trim().slice(0,80);
+  if(reason.length<3){toast('Enter a reason');return}
+  p.status='CANCELLED';p.cancelledAt=nowISO();p.cancelledBy=S.currentUser?.id||'ADMIN';p.cancelReason=reason;p.paymentVerified=false;p.returnedToBalance=true;p.returnedAmount=r2(p.amount);
+  payoutLog(p,'CANCELLED',{reason});
+  logAdminAudit('Cancelled payout',p.id,{sellerId:p.sellerId,userId:p.userId,amount:p.amount,upi:p.upi||'',reason});
+  save();closeModal();toast('Payout cancelled; amount returned to seller');render();
+ }finally{window.__payoutAdminBusy=false}
 }
 function adminWarnings(){const live=S.products||[];return adminLayout('warnings','Warnings',`<div class="admin-card"><div class="section-head"><div><h2>Warning Center</h2><div class="sub">Warn a seller/user and optionally tag the exact live product that needs fixing.</div></div></div><div class="form-grid"><div class="field"><label>Seller/User ID</label><input id="admSid" placeholder="seller id or user id"></div><div class="field"><label>Live Product (optional)</label><select id="admWarnProduct"><option value="">— No product tag —</option>${live.filter(p=>!p.hiddenByAdmin).map(p=>`<option value="${esc(p.id)}">${esc(p.title)} · ${esc(p.id)} · @${esc(p.sellerId)}</option>`).join('')}</select></div><div class="field"><label>Product ID (optional)</label><input id="admWarnProductId" placeholder="Paste exact product ID"></div><div class="field"><label>Title</label><input id="admWarnTitle" value="Product Fix Required"></div></div><div class="field"><label>Message</label><textarea id="admWarnMsg" placeholder="Explain what the seller needs to fix..."></textarea></div><button class="btn primary" onclick="adminWarning()">Send Warning</button><div style="margin-top:18px">${(S.warnings||[]).map(w=>`<div class="security-row"><div><b>${esc(w.title||'Admin Warning')}</b><div class="small muted">@${esc(w.sellerId||w.userId||'-')} · ${w.productId?`Product: ${esc(w.productId)} · `:''}${w.date?new Date(w.date).toLocaleString('en-IN'):'-'}</div><div>${esc(w.message||'')}</div></div><button class="btn danger" onclick="adminRemoveWarning('${esc(w.id||'')}')">Remove</button></div>`).join('')||'<div class="admin-empty">No warnings.</div>'}</div></div>`)}
 function adminRemoveWarning(id){if(!adminOnly())return;const i=(S.warnings||[]).findIndex(w=>String(w.id)===String(id));if(i<0){toast('Warning not found');return}const w=S.warnings[i];S.warnings.splice(i,1);logAdminAudit('Removed warning',id,{sellerId:w.sellerId,userId:w.userId||null});save();toast('Warning removed');render()}
@@ -4405,39 +4486,57 @@ function dashPayouts(){
  const maxPayout=Number(advState().payoutMax||0);
  return dashShell("payouts",`<div class="dash-card" style="background:#111a2d;color:#fff"><div style="display:flex;justify-content:space-between"><h3>Your Earnings Overview</h3><span class="pill" style="background:#143d3a;color:#1ac18a">Secure Wallet</span></div><div class="metric-grid" style="margin-top:20px"><div class="metric" style="background:#1d293c;color:#fff;border:0"><span class="metric-label total">Lifetime Earnings</span><h2 style="color:#69a8ff">${money(earned)}</h2></div><div class="metric" style="background:#1d293c;color:#fff;border:0"><span class="metric-label receive">Available To Receive</span><h2 style="color:#ffb31a">${money(available)}</h2></div><div class="metric" style="background:#1d293c;color:#fff;border:0"><span class="metric-label received">Already Received</span><h2 style="color:#6be0ae">${money(received)}</h2></div></div></div>
  <div class="dash-card"><h3>Request Payout</h3><p class="small muted">Available To Receive: <b>${money(available)}</b> · Minimum: ${money(minPayout)}${maxPayout?` · Maximum: ${money(maxPayout)}`:""}</p><div class="field"><label>Amount (${S.settings.currency})</label><input id="poAmt" type="number" min="${minPayout}" ${maxPayout?`max="${maxPayout}"`:""} placeholder="Minimum payout ${money(minPayout)}"></div><div class="field"><label>Payout UPI ID</label><input id="poUpi" value="${esc(currentSeller().upi||"")}" placeholder="yourname@upi"></div><div class="field"><label>Note to Admin (Optional)</label><input id="poNote" maxlength="50" placeholder="e.g. Urgent payout"></div><button class="btn primary" style="width:100%" onclick="requestPayout()">₹ Request Payout</button></div>
- <div class="dash-card" style="padding:0;overflow:hidden"><h3 style="padding:18px;margin:0">Payout Requests</h3><table class="dash-table"><thead><tr><th>Requested</th><th>Approved</th><th>Status</th><th>Date</th><th>Note</th></tr></thead><tbody>${(S.payouts||[]).filter(x=>x.sellerId===sid).map(x=>`<tr><td>${money(x.amount)}</td><td>${["APPROVED","PAID","SUCCESS","RECEIVED"].includes(payoutStatusUpper(x))?money(x.amount):"—"}</td><td><span class="status ${payoutStatusUpper(x)==="CANCELLED"?'cancelled':(['PENDING','PROCESSING','UNDER REVIEW','ON HOLD'].includes(payoutStatusUpper(x))?'pending':'success')}">${esc(x.status||'PENDING')}</span></td><td>${x.date?new Date(x.date).toLocaleString('en-IN'):'-'}</td><td>${esc(x.note||"")}</td></tr>`).join("")||`<tr><td colspan="5">No payout requests yet.</td></tr>`}</tbody></table></div>`)
+ <div class="dash-card" style="padding:0;overflow:hidden"><h3 style="padding:18px;margin:0">Payout Requests</h3><table class="dash-table"><thead><tr><th>Requested</th><th>Approved</th><th>Status</th><th>Date</th><th>Note</th></tr></thead><tbody>${(S.payouts||[]).filter(x=>x.sellerId===sid).map(x=>`<tr><td>${money(x.amount)}</td><td>${["APPROVED","PAID","SUCCESS","RECEIVED"].includes(payoutStatusUpper(x))?money(x.amount):"—"}</td><td><span class="status ${payoutStatusUpper(x)==="CANCELLED"?'cancelled':(['PENDING','PROCESSING','UNDER REVIEW','ON HOLD'].includes(payoutStatusUpper(x))?'pending':'success')}">${esc(x.status||'PENDING')}</span></td><td>${x.date?new Date(x.date).toLocaleString('en-IN'):'-'}</td><td>${esc(x.note||"")}${x.utr?`<div class="small muted">Ref: ${esc(x.utr)}</div>`:""}${x.cancelReason?`<div class="small muted">Reason: ${esc(x.cancelReason)}</div>`:""}</td></tr>`).join("")||`<tr><td colspan="5">No payout requests yet.</td></tr>`}</tbody></table></div>`)
+}
+async function seFreshBalance(){
+ /* Pull the newest server copy first so a stale browser tab can never over-withdraw. */
+ try{
+  if(typeof ONLINE_READY==='undefined'||!ONLINE_READY||!seOnline())return false;
+  if(ONLINE_LOCAL_DIRTY)await pushOnlineState();
+  await pollOnlineState(true);
+  return true;
+ }catch(e){return false}
 }
 async function requestPayout(){
- const s=currentSeller();
- if(!s||!s.id){toast('Please sign in as a seller');return}
- if(advState().withdrawals){toast('Withdrawals are temporarily disabled by admin');return}
- const amt=Number($('payoutAmount')?.value||0);
- const upi=String($('payoutUpi')?.value||s.upi||'').trim();
- const note=String($('payoutNote')?.value||'').trim();
- const available=Number(sellerAvailableBalance(s.id)||0);
- if(!Number.isFinite(amt)||amt<=0){toast('Enter a valid payout amount');return}
- if(!upi){toast('Enter your UPI ID');return}
- if(amt>available){toast('Requested amount is higher than your To Receive balance');return}
- const duplicate=(S.payouts||[]).some(x=>String(x.sellerId)===String(s.id)&&['PENDING','PROCESSING'].includes(String(x.status||'').toUpperCase())&&Number(x.amount)===amt&&String(x.upi||'').toLowerCase()===upi.toLowerCase());
- if(duplicate){toast('Same payout request is already under review');return}
- s.upi=upi;
- const payout={
-   id:uid('pay'),
-   sellerId:s.id,
-   amount:amt,
-   note,
-   status:'PENDING',
-   date:nowISO(),
-   upi,
-   paymentVerified:false,
-   adminAction:null,
-   processedAt:null
- };
- S.payouts.unshift(payout);
- save();
- toast('Payout request sent to admin for review');
- render();
+ if(window.__payoutBusy)return;
+ if(!systemGuard('withdrawals','Withdrawals are temporarily disabled by Admin'))return;
+ window.__payoutBusy=true;
+ const btn=document.querySelector('button[onclick="requestPayout()"]');if(btn)btn.disabled=true;
+ try{
+  if(!S.currentUser){toast('Please sign in first');return}
+  if(window.adminSellerPreview&&isAdmin()){toast('Admin preview: only the seller can request a payout');return}
+  const sid=currentSeller()?.id;if(!sid){toast('Seller dashboard access required');return}
+  if(S.sellers?.[sid]?.suspended){toast('Your seller account is suspended. Contact support.');return}
+  const rawAmt=String(document.getElementById("poAmt")?.value||'').trim(),upi=(document.getElementById("poUpi")?.value||"").trim(),note=(document.getElementById("poNote")?.value||"").trim().slice(0,50);
+  if(!/^\d{1,9}(\.\d{1,2})?$/.test(rawAmt)){toast('Enter a valid amount (up to 2 decimals)');return}
+  const amt=r2(Number(rawAmt));
+  const cfg=(typeof ensurePlatformConfig==='function'?ensurePlatformConfig():{})||{},pcf=cfg.payout||{},rul=cfg.rules||{};
+  const minPayout=Math.max(30,Number(pcf.min||0),Number(rul.minWithdrawal||0),Number(advState().payoutMin||0));
+  const caps=[pcf.max,rul.maxWithdrawal,advState().payoutMax].map(Number).filter(v=>Number.isFinite(v)&&v>0),maxPayout=caps.length?Math.min(...caps):0;
+  if(amt<minPayout){toast(`Minimum payout is ${money(minPayout)}`);return}
+  if(maxPayout>0&&amt>maxPayout){toast(`Maximum payout is ${money(maxPayout)}`);return}
+  if(!/^[a-zA-Z0-9._-]{2,64}@[a-zA-Z][a-zA-Z0-9.-]{1,40}$/.test(upi)){toast('Enter a valid payout UPI ID');return}
+  if(!(await seFreshBalance())){toast('Could not verify your latest balance from the server. Check internet and try again.');return}
+  const L=sellerLedger(sid);
+  if(L.deficit>0){toast('Your account balance is under review. Please contact support.');return}
+  if(amt>L.available+0.0001){toast('Amount exceeds Available To Receive');return}
+  const mine=(S.payouts||[]).filter(x=>x.sellerId===sid);
+  if(mine.filter(x=>payoutReservesBalance(x)).length>=3){toast('You already have 3 pending requests. Wait for Admin to process them.');return}
+  if(mine.some(x=>Date.now()-new Date(x.date||0).getTime()<30000)){toast('Please wait a few seconds before another request');return}
+  if(mine.some(x=>payoutReservesBalance(x)&&Number(x.amount)===amt&&String(x.upi||'').toLowerCase()===upi.toLowerCase())){toast('Same payout request is already under review');return}
+  S.payouts=S.payouts||[];
+  const payout={id:uid('pay'),sellerId:sid,userId:S.currentUser?.userId||S.currentUser?.authId||S.currentUser?.id||null,amount:amt,note,status:'PENDING',date:nowISO(),upi,paymentVerified:false,manualPayout:true,
+   snapshot:{sales:L.sales,gross:L.gross,fee:L.fee,earned:L.earned,paidBefore:L.paid,pendingBefore:L.pending,spentOnServices:L.spent,adjustments:L.adj,availableBefore:L.available,availableAfter:r2(L.available-amt)},
+   history:[{at:nowISO(),by:S.currentUser?.id||null,action:'REQUESTED',amount:amt}]};
+  S.payouts.unshift(payout);
+  if(sellerLedger(sid).raw<-0.0001){S.payouts.shift();toast('Balance check failed. Request not created.');return}
+  if(currentSeller())currentSeller().upi=upi;
+  save();
+  try{await pushOnlineState()}catch(e){}
+  toast('Payout request submitted. Waiting for Admin payment.');render();
+ }finally{window.__payoutBusy=false;if(btn)btn.disabled=false}
 }
+
 function dashSubscription(){
  const s=currentSeller(),history=(S.subscriptions||[]).filter(x=>x.sellerId===s.id);
  const cfgPlans=(ensurePlatformConfig().plans||[]).slice(0,3);const plans=cfgPlans.filter(p=>p.active!==false&&!p.archived).map(p=>[p.id,p.name,p.monthly,Number(p.commissionPct||0)/100,(Array.isArray(p.featureText)&&p.featureText.length?p.featureText:[`Upload limit: ${p.uploadLimit}`,`Storage limit: ${p.storageLimit} MB`,p.prioritySupport?"Priority support":"Standard support"])])
@@ -5472,7 +5571,7 @@ function mailPanel(){
 window.mailPanel=mailPanel;
 window.studioMenu=function(){mobileOpen=!mobileOpen;document.body.classList.toggle('as-menu-open',mobileOpen);};
 const groups=[['WORKSPACE',[['','grid','Overview'],['control','sliders','Website controls'],['products','box','Products'],['users','users','Users & sellers'],['orders','orders','Orders']]],['BUSINESS',[['sales','chart','Sales & earnings'],['payouts','wallet','Withdrawals'],['commission','tag','Commissions'],['coupons','tag','Coupons'],['analytics','chart','Analytics'],['money','wallet','Money overview']]],['TRUST & GROWTH',[['reviews','star','Reviews'],['smartreviews','star','Review insights'],['warnings','bell','Warnings'],['risk','shield','Risk center'],['ranking','chart','Seller rankings'],['growth','bolt','Seller growth']]],['SYSTEM',[['mail','mail','Mail Center'],['audit','clock','Activity log'],['security','shield','Security'],['emergency','bolt','Emergency controls'],['deleted','trash','Recycle bin'],['system','sliders','System health']]]];
-window.adminSidebar=function(active){return `<aside class="admin-side"><a class="as-logo" href="#home" title="Open Sale Earn Home"><span class="logo-mark">SE</span><span>${esc(siteName())}<small>ADMIN STUDIO</small></span></a><nav class="as-nav" aria-label="Admin navigation">${groups.map(([g,items])=>`<div class="admin-nav-title">${g}</div>${items.map(([id,ic,label])=>`<button class="admin-link ${active===id?'active':''}" onclick="adminNav('${id}')" ${active===id?'aria-current="page"':''}>${icon(ic)}<span class="label">${label}</span>${id==='payouts'&&(S.payouts||[]).some(x=>String(x.status||'PENDING').toUpperCase()==='PENDING')?`<span class="as-count payout-new-badge">${S.payouts.filter(x=>String(x.status||'PENDING').toUpperCase()==='PENDING').length}</span>`:id==='mail'&&mailStore().some(x=>x.type!=='sent'&&!x.read)?`<span class="as-count">${mailStore().filter(x=>x.type!=='sent'&&!x.read).length}</span>`:''}</button>`).join('')}`).join('')}</nav><div class="as-side-footer"><button class="admin-link" onclick="go('home')">${icon('globe')}<span class="label">Visit marketplace</span>${icon('arrow')}</button><div class="as-account"><span class="as-avatar">${esc(initials(S.currentUser?.name))}</span><div style="flex:1"><strong>${esc(S.currentUser?.name||'Administrator')}</strong><small>Administrator · TEST</small></div><button class="btn" aria-label="Sign out" onclick="signout()">${icon('exit')}</button></div></div></aside>`;};
+window.adminSidebar=function(active){return `<aside class="admin-side"><a class="as-logo" href="#home" title="Open Sale Earn Home"><span class="logo-mark">SE</span><span>${esc(siteName())}<small>ADMIN STUDIO</small></span></a><nav class="as-nav" aria-label="Admin navigation">${groups.map(([g,items])=>`<div class="admin-nav-title">${g}</div>${items.map(([id,ic,label])=>`<button class="admin-link ${active===id?'active':''}" onclick="adminNav('${id}')" ${active===id?'aria-current="page"':''}>${icon(ic)}<span class="label">${label}</span>${id==='payouts'&&(S.payouts||[]).some(x=>x.status==='PENDING')?`<span class="as-count">${S.payouts.filter(x=>x.status==='PENDING').length}</span>`:id==='mail'&&mailStore().some(x=>x.type!=='sent'&&!x.read)?`<span class="as-count">${mailStore().filter(x=>x.type!=='sent'&&!x.read).length}</span>`:''}</button>`).join('')}`).join('')}</nav><div class="as-side-footer"><button class="admin-link" onclick="go('home')">${icon('globe')}<span class="label">Visit marketplace</span>${icon('arrow')}</button><div class="as-account"><span class="as-avatar">${esc(initials(S.currentUser?.name))}</span><div style="flex:1"><strong>${esc(S.currentUser?.name||'Administrator')}</strong><small>Administrator · TEST</small></div><button class="btn" aria-label="Sign out" onclick="signout()">${icon('exit')}</button></div></div></aside>`;};
 window.adminTop=function(title){return `<div class="admin-top"><button class="btn as-menu" aria-label="Toggle admin navigation" onclick="studioMenu()">${icon('menu')}</button><div class="as-breadcrumb"><span>Workspace</span><span>/</span><b>${esc(title)}</b></div><div class="admin-search-wrap"><input id="adminGlobalSearch" class="admin-search" aria-label="Search users, products and orders" placeholder="Search anything…" oninput="adminSearchLive(this.value)" onkeydown="if(event.key==='Enter')adminSearch(this.value)" autocomplete="off"><div id="adminSearchResults" class="admin-search-results hidden"></div></div><div class="as-top-actions"><div class="as-sync" data-state="${syncState}" role="status"><i class="as-dot"></i><span>${esc(syncText)}</span></div><button class="btn" onclick="studioPublishNow()" title="Sync saved changes now" aria-label="Sync saved changes now">${icon('refresh')}</button><button class="btn" onclick="go('home')">${icon('globe')}<span class="as-preview-label">View website</span></button><span class="as-avatar">${esc(initials(S.currentUser?.name))}</span></div></div>`;};
 window.adminLayout=function(active,title,content){if(!adminOnly())return `${header()}<main class="page"></main>`;return `<div class="admin-shell">${adminSidebar(active)}<div class="as-mobile-shade" onclick="studioMenu()"></div><section class="admin-main">${adminTop(title)}<div class="admin-content">${content}</div></section></div>`;};
 const titleBlock=(label,title,desc)=>`<div class="as-page-title"><div><div class="as-eyebrow">${esc(label)}</div><h1>${esc(title)}</h1><p>${esc(desc)}</p></div><div class="as-date">${new Date().toLocaleDateString('en-IN',{weekday:'short',day:'numeric',month:'long',year:'numeric'})}</div></div>`;
@@ -7932,6 +8031,17 @@ html:root[data-theme="dark"] .ad-premium{background:linear-gradient(135deg,#0f19
   }
   setTimeout(initTagChipUI, 0);
 })();
+</script>
+
+<script>
+/* ===== FINAL MONEY OVERRIDES (must stay the LAST script) ===== */
+sellerAvailableBalance=function(sid){return sellerLedger(sid).available};
+sellerEarnings=function(sid){return sellerLedger(sid).earned};
+adminMoneyOverview=function(){
+ const rows=Object.values(S.sellers||{}).map(ss=>{const l=sellerLedger(ss.id);return {id:ss.id,name:ss.name||ss.owner||ss.id,l}});
+ const tot=k=>r2(rows.reduce((a,x)=>a+x.l[k],0)),bad=rows.filter(x=>x.l.deficit>0).length;
+ return adminLayout('money','Admin Money Overview',`<div class="admin-kpis"><div class="admin-kpi"><span>All Users To Receive</span><b>${money(tot('available'))}</b></div><div class="admin-kpi"><span>All Users Received</span><b>${money(tot('paid'))}</b></div><div class="admin-kpi"><span>Total Successful Sales</span><b>${rows.reduce((a,x)=>a+x.l.sales,0)}</b></div><div class="admin-kpi"><span>Ledger problems</span><b style="color:${bad?'#ef5b67':'#17b77d'}">${bad||'None'}</b></div></div>
+ <div class="admin-card"><div class="section-head"><div><h2>Seller-wise Money</h2><div class="sub">To Receive = net earnings - paid - pending - spent on services. A red row means the ledger does not add up.</div></div></div><div style="overflow-x:auto"><table class="admin-table"><thead><tr><th>Seller</th><th>Sales</th><th>To Receive</th><th>Pending</th><th>Received</th><th>Net Earnings</th><th>Check</th></tr></thead><tbody>${rows.map(x=>`<tr class="data-row" onclick="adminNav('seller/${esc(x.id)}')"><td><b>@${esc(x.id)}</b><div>${esc(x.name)}</div></td><td>${x.l.sales}</td><td>${money(x.l.available)}</td><td>${money(x.l.pending)}</td><td>${money(x.l.paid)}</td><td>${money(x.l.earned)}</td><td>${x.l.deficit>0?`<span class="admin-pill danger">Short ${money(x.l.deficit)}</span>`:'<span class="admin-pill success">OK</span>'}</td></tr>`).join('')||'<tr><td colspan="7"><div class="admin-empty">No seller data.</div></td></tr>'}</tbody></table></div></div>`)};
 </script>
 
 </html>
