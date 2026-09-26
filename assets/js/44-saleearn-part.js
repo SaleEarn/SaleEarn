@@ -1,0 +1,9 @@
+
+/* ===== FINAL MONEY OVERRIDES (must stay the LAST script) ===== */
+sellerAvailableBalance=function(sid){return sellerLedger(sid).available};
+sellerEarnings=function(sid){return sellerLedger(sid).earned};
+adminMoneyOverview=function(){
+ const rows=Object.values(S.sellers||{}).map(ss=>{const l=sellerLedger(ss.id);return {id:ss.id,name:ss.name||ss.owner||ss.id,l}});
+ const tot=k=>r2(rows.reduce((a,x)=>a+x.l[k],0)),bad=rows.filter(x=>x.l.deficit>0).length;
+ return adminLayout('money','Admin Money Overview',`<div class="admin-kpis"><div class="admin-kpi"><span>All Users To Receive</span><b>${money(tot('available'))}</b></div><div class="admin-kpi"><span>All Users Received</span><b>${money(tot('paid'))}</b></div><div class="admin-kpi"><span>Total Successful Sales</span><b>${rows.reduce((a,x)=>a+x.l.sales,0)}</b></div><div class="admin-kpi"><span>Ledger problems</span><b style="color:${bad?'#ef5b67':'#17b77d'}">${bad||'None'}</b></div></div>
+ <div class="admin-card"><div class="section-head"><div><h2>Seller-wise Money</h2><div class="sub">To Receive = net earnings - paid - pending - spent on services. A red row means the ledger does not add up.</div></div></div><div style="overflow-x:auto"><table class="admin-table"><thead><tr><th>Seller</th><th>Sales</th><th>To Receive</th><th>Pending</th><th>Received</th><th>Net Earnings</th><th>Check</th></tr></thead><tbody>${rows.map(x=>`<tr class="data-row" onclick="adminNav('seller/${esc(x.id)}')"><td><b>@${esc(x.id)}</b><div>${esc(x.name)}</div></td><td>${x.l.sales}</td><td>${money(x.l.available)}</td><td>${money(x.l.pending)}</td><td>${money(x.l.paid)}</td><td>${money(x.l.earned)}</td><td>${x.l.deficit>0?`<span class="admin-pill danger">Short ${money(x.l.deficit)}</span>`:'<span class="admin-pill success">OK</span>'}</td></tr>`).join('')||'<tr><td colspan="7"><div class="admin-empty">No seller data.</div></td></tr>'}</tbody></table></div></div>`)};
