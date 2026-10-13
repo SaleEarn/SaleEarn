@@ -1,0 +1,1 @@
+setTimeout(()=>refreshCurrencyRate(false),1400);
